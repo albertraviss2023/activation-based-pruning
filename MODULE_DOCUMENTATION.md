@@ -1,10 +1,10 @@
-# Module Documentation: `surgical_pruning` 📦
+# Module Documentation: `reducnn` 📦
 
-This document provides a comprehensive breakdown of every module, class, and function within the `surgical_pruning` package. It is designed for developers and researchers who need to understand the internal "plumbing" of the library.
+This document provides a comprehensive breakdown of every module, class, and function within the `reducnn` package. It is designed for developers and researchers who need to understand the internal "plumbing" of the library.
 
 ---
 
-## 1. `surgical_pruning.core`
+## 1. `reducnn.core`
 The foundational layer of the library, containing abstract interfaces, decorators, and infrastructure utilities.
 
 ### `adapter.py`
@@ -37,7 +37,7 @@ The foundational layer of the library, containing abstract interfaces, decorator
 
 ---
 
-## 2. `surgical_pruning.backends`
+## 2. `reducnn.backends`
 Contains the concrete implementations of the `FrameworkAdapter` for specific deep learning engines.
 
 ### `torch_backend.py`
@@ -58,12 +58,12 @@ Contains the concrete implementations of the `FrameworkAdapter` for specific dee
 
 ---
 
-## 3. `surgical_pruning.pruner`
+## 3. `reducnn.pruner`
 The "Brain" of the library. It contains the mathematical heuristics and the logic for decision-making.
 
 ### `surgeon.py`
 - **Purpose:** Orchestrates the pruning action.
-- **Key Class:** `SurgicalPruner`
+- **Key Class:** `ReduCNNPruner`
     - `prune(model, loader, ratio)`: Coordinates the 3-step process: (1) Score Calculation, (2) Mask Selection, (3) Structural Surgery.
 
 ### `registry.py`
@@ -80,7 +80,7 @@ The "Brain" of the library. It contains the mathematical heuristics and the logi
 
 ---
 
-## 4. `surgical_pruning.analyzer`
+## 4. `reducnn.analyzer`
 Diagnostic tools for research and decision-making.
 
 ### `validator.py`
@@ -93,7 +93,7 @@ Diagnostic tools for research and decision-making.
 
 ---
 
-## 5. `surgical_pruning.visualization`
+## 5. `reducnn.visualization`
 Decoupled plotting utilities for both technical research and business presentations.
 
 ### `stakeholder.py`
@@ -111,10 +111,31 @@ Decoupled plotting utilities for both technical research and business presentati
 
 ---
 
-## 6. `surgical_pruning.engine`
-The "High-Level" entry point for standard workflows.
+## 6. Dataset & Model Generalization
+The framework is designed to be dataset-agnostic, allowing researchers to swap between standard benchmarks and custom datasets with zero changes to the core engine.
 
-### `orchestrator.py`
-- **Purpose:** A thin wrapper for users who want to run the full pipeline with a single command.
-- **Key Class:** `Orchestrator`
-    - `run()`: Trains a baseline, visualizes it, prunes it, fine-tunes the result, and generates a final report.
+### Dataset Auto-Discovery
+- **Shape Inference:** The `FrameworkAdapter` (both PyTorch and Keras) automatically detects the `input_shape` (e.g., 3x32x32 for CIFAR, 3x128x128 for CatDog) from the provided calibration data loader.
+- **Classification Head Adaptation:** The `get_model` factory dynamically adjusts the final `Dense` or `Linear` layer to match the `num_classes` parameter (e.g., 2 for CatDog, 10 for CIFAR-10, 100 for CIFAR-100).
+- **Normalization Handling:** Built-in training loops support any standard `DataLoader` or `tf.data.Dataset` object, ensuring that custom pre-processing and augmentations are preserved during the "healing" (fine-tuning) phase.
+
+### Architectural Surgery: VGG vs. ResNet
+The framework distinguishes between **Linear Dependency Chains** and **Residual Clusters**:
+
+#### 1. VGG-Style (Sequential)
+- **Pattern:** `Conv -> BN -> ReLU -> Conv`
+- **Logic:** A "Cascading Cut" is performed. Removing filter $j$ in the first Conv requires removing index $j$ from the following BN and removing index $j$ from the **input channels** of the next Conv.
+- **Tracing:** Simple sequential look-ahead is sufficient to identify the next prunable layer.
+
+#### 2. ResNet-Style (Branched/Residual)
+- **Pattern:** `(Identity + Conv_Block) -> Add`
+- **Problem:** Because the output of the identity shortcut and the residual block are added, they MUST have the same number of channels. Independent pruning would cause a shape mismatch error.
+- **Solution (Cluster Harmonization):** 
+    - **Tracer:** The `TorchStructuralPruner` uses `torch.fx` to identify `Add` nodes and traces back to all contributing producers.
+    - **Harmonizer:** These producers are grouped into a "Cluster." The framework ensures that all members of a cluster receive the **exact same pruning mask**, maintaining mathematical consistency for the element-wise addition.
+    - **Idempotency:** The surgery engine tracks which inputs have already been shrunk to prevent "double-slicing" in complex multi-branch graphs.
+ **### Architecture & Dataset Generalization
+The framework has been upgraded to support non-sequential models and generic datasets:
+- **Residual Cluster Management:** (PyTorch) Automatically identifies layers that must be pruned identically due to skip connections (e.g., in ResNet).
+- **Functional Rebuilder:** (Keras) Uses a graph-based reconstruction strategy to maintain connectivity in complex branching models.
+- **Dynamic Shape Detection:** Adapters now derive input dimensions and class counts automatically from the data loader or model configuration, allowing seamless transitions between MNIST (28x28), CIFAR (32x32), and ImageNet (224x224).

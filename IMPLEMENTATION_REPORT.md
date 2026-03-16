@@ -1,4 +1,4 @@
-# Comprehensive Implementation Report: The Surgical Pruning Framework
+# Comprehensive Implementation Report: The ReduCNN Framework
 
 ## 1. Mathematical Foundations of Importance Scoring
 
@@ -55,21 +55,35 @@ Flattens all scores across the entire network into a single vector $\mathbf{V}$,
 
 ## 4. Structural Surgery: The Cascading Cut Algorithm
 
-When a filter is removed, the framework must repair the resulting "broken" graph dependencies.
+When a filter is removed, the framework must repair the resulting "broken" graph dependencies. The logic differs significantly between sequential and residual architectures.
 
-### 4.1 The Dependency Chain
-For a sequence $Conv_A \rightarrow BN_A \rightarrow Conv_B$:
-1.  **Cut 1 (Output):** Delete row $j$ from $Conv_A$ weights.
-2.  **Cut 2 (Normalization):** Delete index $j$ from $BN_A$ mean, variance, and affine parameters.
-3.  **Cut 3 (Input):** Delete index $j$ from the **input channel** dimension of $Conv_B$.
+### 4.1 Sequential Surgery (VGG-Style)
+For a linear sequence $Conv_A \rightarrow BN_A \rightarrow Conv_B$:
+1.  **Output Cut:** Delete filter $j$ from $Conv_A$.
+2.  **Normalization alignment:** Delete index $j$ from $BN_A$ parameters.
+3.  **Input Cut:** Delete index $j$ from the **input channel** dimension of $Conv_B$.
+This is handled via a simple topological successor lookup.
 
-### 4.2 Framework-Specific Implementations
-*   **PyTorch Backend:** Performs dynamic in-place surgery using tensor slicing and `setattr`. It includes an expansion logic for `Linear` layers following `Conv2d` to map spatial indices correctly.
-*   **Keras Backend:** Since Keras graphs are static, the backend uses a functional re-construction approach, rebuilding the model layer-by-layer and injecting the pruned weights.
+### 4.2 Residual Surgery (ResNet-Style)
+In branched architectures, a single "cut" has multi-dimensional repercussions.
+*   **The Cluster Constraint:** In a residual block $y = f(x) + x$, the number of channels in $f(x)$ must match $x$.
+*   **The Solution:** The framework identifies **Residual Clusters**—groups of layers whose outputs are eventually combined.
+*   **Harmonization:** If the final convolution of a residual branch is pruned by 30%, the identity shortcut (if it contains a projection convolution) must be pruned by the **exact same 30%** using the **exact same indices**.
+*   **FX Tracing:** PyTorch implementation uses `torch.fx` to accurately trace these dependencies through `Add` and `Concat` nodes, ensuring that "input shrinks" are only applied once even if multiple cluster members feed into the same successor.
 
 ---
 
-## 5. Diagnostics, Logging & Visualization
+## 5. Dataset Generalization & Auto-Discovery
+ReduCNN is designed to be environment-agnostic. 
+
+### 5.1 Dynamic Model Factory
+The `get_model(model_type, input_shape, num_classes)` pattern allows the framework to instantiate models for any task:
+*   **MNIST:** `(1, 28, 28)` with 10 classes.
+*   **CIFAR-100:** `(3, 32, 32)` with 100 classes.
+*   **Cats vs Dogs:** `(3, 128, 128)` with 2 classes.
+
+### 5.2 Metadata Inference
+The `FrameworkAdapter` derives calibration requirements (batch size, normalization constants) directly from the provided data loaders, allowing for "Plug-and-Prune" workflows where the user only needs to provide their model and a small sample of their data.
 
 ### 5.1 Real-Time Research Feedback
 To support long research runs in environments like Google Colab, the framework provides:

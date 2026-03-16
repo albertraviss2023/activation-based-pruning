@@ -1,6 +1,6 @@
 # Technical Fidelity Report: Structural Pruning vs. Scientific Literature
 
-This report evaluates the implementation of the `surgical_pruning` library against the foundational peer-reviewed literature for each supported heuristic.
+This report evaluates the implementation of the `reducnn` library against the foundational peer-reviewed literature for each supported heuristic.
 
 ---
 
@@ -89,7 +89,7 @@ Pruning an output filter $j$ in layer $L$ creates a "broken" dependency in layer
 ---
 
 ## Summary Conclusion
-The `surgical_pruning` framework is **scientifically accurate**. 
+The `reducnn` framework is **scientifically accurate**. 
 - It respects the **spatial and channel layouts** of different frameworks (Dual-Backend Fidelity).
 - It uses **activation-aware scoring** (Taylor, APoZ, CHIP) rather than just simple weight norms.
 - It implements the **recursive structural repair** required by He et al. (2017) to ensure the model remains executable after surgery.

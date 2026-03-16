@@ -1,4 +1,4 @@
-# Surgical Pruning ✂️
+# ReduCNN ✂️ (v0.44)
 
 A professional, modular, dual-framework Python package for **Activation-Based Structural Pruning**. This package allows you to physically remove filters and channels from PyTorch and Keras models, reducing compute cost (FLOPs) and memory footprint while maintaining behavioral consistency.
 
@@ -7,7 +7,7 @@ A professional, modular, dual-framework Python package for **Activation-Based St
 To install the package in editable mode (perfect for research and development):
 
 ```bash
-git clone https://github.com/your-repo/activation-based-pruning.git
+git clone https://github.com/albertraviss2023/activation-based-pruning.git
 cd activation-based-pruning
 pip install -e .
 ```
@@ -16,13 +16,13 @@ pip install -e .
 
 ## Sequential Decoupled Workflow
 
-Unlike a monolithic script, `surgical_pruning` is designed as a suite of independent tools. Here is how to use them sequentially:
+Unlike a monolithic script, `reducnn` is designed as a suite of independent tools. Here is how to use them sequentially:
 
 ### Step 1: Environment & Storage Setup (`sp.CloudStorage`)
 **Why:** Researchers often switch between local VS Code and Google Colab. This module ensures your model paths remain consistent without changing code.
 
 ```python
-import surgical_pruning as sp
+import reducnn as sp
 
 # project_name maps to a folder in your Google Drive 'MyDrive'
 storage = sp.CloudStorage(project_name="MyPruningResearch")
@@ -36,7 +36,7 @@ checkpoint_dir = storage.resolve_path("checkpoints/v1")
 **Why:** You need a unified way to load or build models regardless of whether you use PyTorch or Keras.
 
 ```python
-from surgical_pruning.backends import get_adapter
+from reducnn.backends import get_adapter
 
 # 1. Provide your model object
 my_model = ... 
@@ -52,7 +52,7 @@ adapter.load_checkpoint(my_model, checkpoint_dir / "weights.pth")
 **Why:** Before pruning, you may want to see if 'taylor' scores correlate with 'l1_norm' or 'apoz' for your specific architecture.
 
 ```python
-from surgical_pruning.analyzer import MethodValidator
+from reducnn.analyzer import MethodValidator
 
 validator = MethodValidator()
 validator.compare_methods(
@@ -64,13 +64,13 @@ validator.compare_methods(
 # This generates diagnostic heatmaps and rank-correlation plots.
 ```
 
-### Step 4: Executing the Pruning (`sp.pruner.SurgicalPruner`)
+### Step 4: Executing the Pruning (`sp.pruner.ReduCNNPruner`)
 **Why:** This is the core engine. It calculates importance and performs "surgery" to return a physically smaller model.
 
 ```python
-from surgical_pruning.pruner import SurgicalPruner
+from reducnn.pruner import ReduCNNPruner
 
-surgeon = SurgicalPruner(method='taylor', scope='local')
+surgeon = ReduCNNPruner(method='taylor', scope='local')
 
 # Returns a new physically smaller model and the boolean masks used
 pruned_model, masks = surgeon.prune(my_model, my_dataloader, ratio=0.4)
@@ -80,7 +80,7 @@ pruned_model, masks = surgeon.prune(my_model, my_dataloader, ratio=0.4)
 **Why:** Stakeholders need to know the "ROI"—how much accuracy is lost for every 10% of FLOPs reduced.
 
 ```python
-from surgical_pruning.analyzer import ParetoAnalyzer
+from reducnn.analyzer import ParetoAnalyzer
 
 pareto = ParetoAnalyzer(method='taylor')
 pareto.run(my_model, my_dataloader, ratios=[0.2, 0.4, 0.6, 0.8])
@@ -91,7 +91,7 @@ pareto.run(my_model, my_dataloader, ratios=[0.2, 0.4, 0.6, 0.8])
 **Why:** To prove the pruning was "surgical" and didn't break model internal representations.
 
 ```python
-import surgical_pruning.visualization as viz
+import reducnn.visualization as viz
 
 # 1. Bar chart of layer-wise sensitivity
 viz.plot_layer_sensitivity(masks, title_prefix="VGG16")
@@ -109,7 +109,7 @@ viz.plot_metrics_comparison(b_stats, p_stats)
 If you prefer a single command to run the full "Train -> Prune -> Fine-tune" pipeline, use the Orchestrator:
 
 ```python
-from surgical_pruning.engine import Orchestrator
+from reducnn.engine import Orchestrator
 
 config = {'model_type': 'vgg16', 'ratio': 0.4, 'method': 'taylor', 'epochs': 10}
 orch = Orchestrator(config)
@@ -123,10 +123,10 @@ orch.run(train_loader, val_loader=val_loader)
 The package follows professional Python standards. You can access detailed instructions for any class or module directly in your terminal or notebook using `help()`:
 
 ```python
-import surgical_pruning.pruner as pruner
+import reducnn.pruner as pruner
 
-# Show documentation for the SurgicalPruner class
-help(pruner.SurgicalPruner)
+# Show documentation for the ReduCNNPruner class
+help(pruner.ReduCNNPruner)
 
 # Show documentation for the Pruning Engine module
 help(pruner)
@@ -137,7 +137,7 @@ help(pruner)
 You can register your own pruning criteria using the `@register_method` decorator:
 
 ```python
-from surgical_pruning.pruner import register_method
+from reducnn.pruner import register_method
 import numpy as np
 
 @register_method("my_custom_math")
@@ -147,5 +147,5 @@ def my_custom_score(layer, **kwargs):
     return np.mean(np.abs(weights), axis=(0,1,2))
 
 # Now you can use it in the surgeon
-surgeon = SurgicalPruner(method="my_custom_math")
+surgeon = ReduCNNPruner(method="my_custom_math")
 ```

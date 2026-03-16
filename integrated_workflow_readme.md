@@ -1,6 +1,6 @@
 # Integrated VS Code + Google Colab Workflow
 
-This document outlines the professional "surgical" workflow for developing the `surgical_pruning` package locally in **VS Code** while executing experiments on **Google Colab**'s GPU/TPU infrastructure.
+This document outlines the professional "surgical" workflow for developing the `reducnn` package locally in **VS Code** while executing experiments on **Google Colab**'s GPU/TPU infrastructure.
 
 ## 1. Prerequisites
 - **Google Drive for Desktop:** Installed on your local machine.
@@ -44,7 +44,7 @@ if project_path:
     os.chdir(project_path)
     
     # --- 4. THE "SURGICAL" FIX FOR THE SRC LAYOUT ---
-    # Add 'src' to path so 'import surgical_pruning' works directly
+    # Add 'src' to path so 'import reducnn' works directly
     src_path = os.path.join(project_path, "src")
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
@@ -63,7 +63,7 @@ else:
 ```
 
 ## 3. Daily "Seamless" Cycle
-1. **Local Edit:** Modify your code in `src/surgical_pruning/` using VS Code.
+1. **Local Edit:** Modify your code in `src/reducnn/` using VS Code.
 2. **Save:** Hit `Ctrl+S`. Google Drive for Desktop will sync the file to the cloud in 1-2 seconds.
 3. **Colab Run:** Simply run your notebook cell in Colab. 
    - **No re-installing.** 
@@ -74,7 +74,7 @@ else:
 Once the bootloader has run, you can import your package directly:
 
 ```python
-from surgical_pruning.engine.orchestrator import PruningOrchestrator
+from reducnn.engine.orchestrator import PruningOrchestrator
 orchestrator = PruningOrchestrator(framework="torch")
 print("Module imported successfully!")
 ```

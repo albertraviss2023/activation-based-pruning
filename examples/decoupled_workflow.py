@@ -1,5 +1,5 @@
 """
-Example of using the Surgical Pruning package in a decoupled way.
+Example of using the ReduCNN package in a decoupled way.
 """
 import sys
 import os
@@ -7,9 +7,9 @@ import os
 # Ensure the src directory is in the path for the example to run without installation
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-import surgical_pruning.pruner as pruner
-import surgical_pruning.visualization as viz
-import surgical_pruning.analyzer as analyzer
+import reducnn.pruner as pruner
+import reducnn.visualization as viz
+import reducnn.analyzer as analyzer
 
 import torch
 import torch.nn as nn
@@ -45,9 +45,9 @@ pareto = analyzer.ParetoAnalyzer(method='l1_norm')
 print("Pareto initialized successfully.")
 
 # 3. Perform the actual pruning (Core Engine)
-print("\n=== Executing Surgical Pruning ===")
+print("\n=== Executing ReduCNN ===")
 # Note: User doesn't need to specify "PyTorch" - the engine detects it!
-surgeon = pruner.SurgicalPruner(method='l1_norm', scope='local')
+surgeon = pruner.ReduCNNPruner(method='l1_norm', scope='local')
 pruned_model, masks = surgeon.prune(model, loader, ratio=0.5)
 
 print("\nOriginal Model params:", sum(p.numel() for p in model.parameters()))

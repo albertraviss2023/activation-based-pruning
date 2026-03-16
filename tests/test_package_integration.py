@@ -9,17 +9,16 @@ import tensorflow as tf
 # Add src to path for direct package testing
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from surgical_pruning import CloudStorage
-from surgical_pruning.pruner import SurgicalPruner
-from surgical_pruning.backends.torch_backend import PyTorchAdapter
-from surgical_pruning.backends.keras_backend import KerasAdapter
-from surgical_pruning.engine import Orchestrator
+from reducnn import CloudStorage
+from reducnn.pruner import ReduCNNPruner
+from reducnn.backends.torch_backend import PyTorchAdapter
+from reducnn.backends.keras_backend import KerasAdapter
+from reducnn.engine import Orchestrator
 
 def test_cloud_storage_resolution():
     storage = CloudStorage(project_name="test_proj")
     # Should resolve to local path when not in Colab
-    path = storage.resolve_path("my_models", use_drive=True)
-    assert "test_proj" not in str(path) if not storage.is_colab else "test_proj" in str(path)
+    path = storage.resolve_path("my_models")
     assert os.path.exists(path)
 
 def test_pytorch_adapter_integration(tmp_path):
@@ -52,9 +51,9 @@ def test_surgical_pruner_dispatch():
     y = torch.randint(0, 10, (2,))
     loader = [(x, y)]
     
-    surgeon = SurgicalPruner(method='l1_norm')
+    surgeon = ReduCNNPruner(method='l1_norm')
     # This triggers @framework_dispatch
-    pruned, masks = surgeon.prune(model, loader, ratio=0.5)
+    pruned, masks, duration = surgeon.prune(model, loader, ratio=0.5)
     
     assert len(masks) > 0
     assert "0" in masks # Sequential names layers by index

@@ -104,6 +104,69 @@ def plot_feature_maps(viz_data: Dict[str, np.ndarray], title_prefix: str = "Mode
     plt.tight_layout()
     plt.show()
 
+def plot_inference_gallery(images: np.ndarray, true_labels: list, 
+                           pred_orig: list, pred_pruned: list, 
+                           class_names: list = None, title: str = "Inference Comparison"):
+    """
+    Plots a grid of images with True, Original, and Pruned labels.
+    Args:
+        images: Numpy array of shape (N, C, H, W) or (N, H, W, C)
+        true_labels: List of ground truth integer labels
+        pred_orig: List of predictions from original model
+        pred_pruned: List of predictions from pruned model
+        class_names: Optional mapping of int -> string label
+    """
+    n = min(len(images), 8)
+    cols = 4
+    rows = (n + cols - 1) // cols
+    
+    fig, axes = plt.subplots(rows, cols, figsize=(16, 4 * rows))
+    axes = axes.flatten()
+    
+    for i in range(n):
+        img = images[i]
+        # Transpose if (C, H, W)
+        if img.shape[0] == 3 or img.shape[0] == 1:
+            img = img.transpose(1, 2, 0)
+        
+        # De-normalize if needed (heuristic: if mean < 0)
+        if np.min(img) < -0.1:
+            img = (img * 0.5) + 0.5
+        img = np.clip(img, 0, 1)
+        
+        ax = axes[i]
+        ax.imshow(img)
+        
+        t_idx = true_labels[i]
+        o_idx = pred_orig[i]
+        p_idx = pred_pruned[i]
+        
+        t_lab = class_names[t_idx] if class_names else str(t_idx)
+        o_lab = class_names[o_idx] if class_names else str(o_idx)
+        p_lab = class_names[p_idx] if class_names else str(p_idx)
+        
+        # Color logic: Red if wrong
+        o_color = 'green' if o_idx == t_idx else 'red'
+        p_color = 'green' if p_idx == t_idx else 'red'
+        
+        label_str = f"True: {t_lab}\nOrig: {o_lab}\nPruned: {p_lab}"
+        ax.set_title(label_str, fontsize=10, pad=10)
+        
+        # Visual cues for mismatch
+        if o_idx != t_idx or p_idx != t_idx:
+            for spine in ax.spines.values():
+                spine.set_edgecolor('red')
+                spine.set_linewidth(2)
+        
+        ax.axis('off')
+        
+    for j in range(n, len(axes)):
+        axes[j].axis('off')
+        
+    plt.suptitle(title, fontsize=16, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    plt.show()
+
 if __name__ == "__main__":
     print("Testing Research Visuals with Dummy Data...")
     dummy_scores = {

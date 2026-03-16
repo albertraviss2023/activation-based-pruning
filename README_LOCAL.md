@@ -1,4 +1,4 @@
-# Local Development Manual: `surgical_pruning` 🛠️
+# Local Development Manual: `reducnn` 🛠️
 
 This document is for internal development within VS Code or Colab. It explains how to maintain, troubleshoot, and extend the package before final release.
 
@@ -21,7 +21,7 @@ One of the core design goals is that **modules should be testable without the fu
 ### Test Visuals
 Run this to verify bar charts and metric plots:
 ```bash
-python src/surgical_pruning/visualization/stakeholder.py
+python src/reducnn/visualization/stakeholder.py
 ```
 
 ---
@@ -41,12 +41,12 @@ python -m pytest tests/test_package_integration.py
 
 | Directory | Purpose |
 | :--- | :--- |
-| `src/surgical_pruning/core` | ABCs, Decorators (`@framework_dispatch`), and `CloudStorage`. |
-| `src/surgical_pruning/backends` | PyTorch/Keras specific logic (Surgery, Stats, Loading). |
-| `src/surgical_pruning/pruner` | Core math: `SurgicalPruner`, `registry`, and `mask_builder`. |
-| `src/surgical_pruning/analyzer` | Diagnostic tools: `MethodValidator` and `ParetoAnalyzer`. |
-| `src/surgical_pruning/visualization` | All plotting logic decoupled from frameworks. |
-| `src/surgical_pruning/engine` | The high-level `Orchestrator` wrapper. |
+| `src/reducnn/core` | ABCs, Decorators (`@framework_dispatch`), and `CloudStorage`. |
+| `src/reducnn/backends` | PyTorch/Keras specific logic (Surgery, Stats, Loading). |
+| `src/reducnn/pruner` | Core math: `ReduCNNPruner`, `registry`, and `mask_builder`. |
+| `src/reducnn/analyzer` | Diagnostic tools: `MethodValidator` and `ParetoAnalyzer`. |
+| `src/reducnn/visualization` | All plotting logic decoupled from frameworks. |
+| `src/reducnn/engine` | The high-level `Orchestrator` wrapper. |
 
 ---
 
@@ -96,10 +96,10 @@ else:
 Now you can import and use the package. Any change you save in VS Code will sync to Google Drive and be automatically reloaded by Colab's `%autoreload` magic.
 
 ```python
-import surgical_pruning as sp
-from surgical_pruning.backends.torch_backend import PyTorchAdapter
-from surgical_pruning.pruner import SurgicalPruner
-from surgical_pruning.core.storage import CloudStorage
+import reducnn as sp
+from reducnn.backends.torch_backend import PyTorchAdapter
+from reducnn.pruner import ReduCNNPruner
+from reducnn.core.storage import CloudStorage
 
 # --- Storage Configuration (Saves to Project Root) ---
 storage = CloudStorage()
@@ -111,7 +111,7 @@ model = adapter.get_model("vgg16")
 
 # --- Pruning Execution ---
 # (Assumes 'train_loader' is defined)
-surgeon = SurgicalPruner(method='taylor', ratio=0.4)
+surgeon = ReduCNNPruner(method='taylor', ratio=0.4)
 pruned_model, masks = surgeon.prune(model, train_loader)
 
 # --- Save to Google Drive ---
