@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-03-25T00:24:56.546123",
+  "cwd": "C:\\Users\\alber\\activation-based-pruning",
+  "purpose": "pre_v0.88_release_snapshot",
+  "files": {
+    "version_files": [
+      "src/reducnn/__init__.py",
+      "pyproject.toml"
+    ],
+    "production_notebooks": [
+      "experiments_cifar10.ipynb",
+      "experiments_cifar100.ipynb",
+      "experiments_cat_dog.ipynb",
+      "experiments_cifar100_github.ipynb",
+      "experiments_cat_dog_github.ipynb"
+    ]
+  },
+  "notes": [
+    "Need artifact auto-persistence with run_id",
+    "Need default load-or-train baseline in production notebooks",
+    "Need backend-compatible behavior after calibration default update",
+    "Need release bump to 0.88 and changelog docs"
+  ]
+}

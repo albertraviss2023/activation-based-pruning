@@ -51,11 +51,11 @@ def add_inference_diagnostics(file_path, class_names=None):
             "    return latency\n",
             "\n",
             "print('⏱️ Benchmarking Latency (Batch Size = 1)...')\n",
-            "t_orig = benchmark_inference(t_model_resnet, test_loader, adapter.device)\n",
-            "t_pruned = benchmark_inference(pruned_res, test_loader, adapter.device)\n",
+            "t_orig = benchmark_inference(orig_model, loader, adapter.device)\n",
+            "t_pruned = benchmark_inference(pruned_model, loader, adapter.device)\n",
             "\n",
-            "print(f'   Original ResNet Latency: {t_orig:.3f} ms')\n",
-            "print(f'   Pruned ResNet Latency:   {t_pruned:.3f} ms')\n",
+            "print(f'   Original {MODEL_TYPE} Latency: {t_orig:.3f} ms')\n",
+            "print(f'   Pruned {MODEL_TYPE} Latency:   {t_pruned:.3f} ms')\n",
             "print(f'   🚀 Speedup: {(t_orig/t_pruned):.2f}x')"
         ]
     }
@@ -68,19 +68,19 @@ def add_inference_diagnostics(file_path, class_names=None):
         "outputs": [],
         "source": [
             "print('🖼️ Generating Inference Gallery...')\n",
-            "it = iter(test_loader)\n",
+            "it = iter(loader)\n",
             "images, labels = next(it)\n",
             "images_sub = images[:8]\n",
             "labels_sub = labels[:8]\n",
             "\n",
             "with torch.no_grad():\n",
-            "    p_orig = torch.argmax(t_model_resnet(images_sub.to(adapter.device)), dim=1).cpu().numpy()\n",
-            "    p_pruned = torch.argmax(pruned_res(images_sub.to(adapter.device)), dim=1).cpu().numpy()\n",
+            "    p_orig = torch.argmax(orig_model(images_sub.to(adapter.device)), dim=1).cpu().numpy()\n",
+            "    p_pruned = torch.argmax(pruned_model(images_sub.to(adapter.device)), dim=1).cpu().numpy()\n",
             "\n",
             f"class_names = {class_names}\n",
             "viz.plot_inference_gallery(images_sub.numpy(), labels_sub.numpy(), \n",
             "                           p_orig, p_pruned, \n",
-            "                           class_names=class_names, title='ResNet-18: Original vs. Pruned Predictions')"
+            "                           class_names=class_names, title=f'{MODEL_TYPE}: Original vs. Pruned Predictions')"
         ]
     }
     

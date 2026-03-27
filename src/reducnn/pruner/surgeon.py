@@ -1,9 +1,13 @@
 import time
 from typing import Dict, Any, Tuple, Optional
 import numpy as np
+from pathlib import Path
 from ..core.decorators import timer, logger, framework_dispatch
 from ..core.adapter import FrameworkAdapter
 from .mask_builder import build_pruning_masks
+
+from ..analyzer.classifier import ArchitectureClassifier
+from ..analyzer.validator import ModelValidator
 
 class ReduCNNPruner:
     """
@@ -19,7 +23,7 @@ class ReduCNNPruner:
         >>> pruned_model, masks, duration = surgeon.prune(model, dataloader, ratio=0.5)
     
     Attributes:
-        method (str): The importance heuristic to use (e.g., 'l1_norm', 'taylor', 'chip').
+        method (str): The importance heuristic to use (e.g., 'l1_norm', 'mean_abs_act', 'apoz').
         scope (str): Pruning scope - 'local' (layer-wise) or 'global' (network-wide).
         config (Dict[str, Any]): Dictionary of framework-specific settings.
     """
@@ -29,8 +33,9 @@ class ReduCNNPruner:
         Initializes the Surgeon with a specific pruning strategy.
         
         Args:
-            method (str): Metric for ranking filters. 
-                Options: 'l1_norm', 'l2_norm', 'taylor', 'apoz', 'chip'.
+            method (str): Metric for ranking filters.
+                Bundled options: 'l1_norm', 'mean_abs_act', 'apoz'.
+                Additional methods can be added via `@register_method(...)`.
             scope (str): How thresholds are calculated. 
                 'local': Prunes the same % from every layer.
                 'global': Prunes the least important filters across the whole model.
@@ -47,53 +52,79 @@ class ReduCNNPruner:
               model: Any, 
               loader: Any, 
               ratio: float = 0.5, 
-              adapter: Optional[FrameworkAdapter] = None) -> Tuple[Any, Dict[str, np.ndarray], float]:
+              adapter: Optional[FrameworkAdapter] = None,
+              save_pruned_path: Optional[str] = None) -> Tuple[Any, Dict[str, np.ndarray], float]:
         """
         Performs structural surgery on the model to reduce its size and complexity.
-        
-        This method executes a 3-step surgical pipeline:
-        1. **Analysis**: Uses the chosen 'method' to score every filter's importance.
-        2. **Masking**: Ranks scores and identifies filters below the 'ratio' threshold.
-        3. **Surgery**: Modifies the model's internal graph to physically remove channels.
-        
-        Args:
-            model (Any): The PyTorch (nn.Module) or Keras (tf.keras.Model) to be pruned.
-            loader (Any): Data loader used for data-dependent heuristics (like Taylor/CHIP).
-            ratio (float): The percentage of filters to REMOVE (0.0 to 1.0).
-            adapter (Optional[FrameworkAdapter]): The backend adapter automatically 
-                injected by the @framework_dispatch decorator.
-            
-        Returns:
-            Tuple[Any, Dict[str, np.ndarray], float]: 
-                - pruned_model: The new, physically smaller model.
-                - masks: Binary keep/prune masks for every target layer.
-                - duration: The total time (seconds) taken for the surgery phase.
-                
-        Raises:
-            SurgeryError: If the structural graph cannot be safely reconstructed.
-            ValueError: If the pruning method returns invalid or null scores.
         """
+        # PHASE 0: TOPOLOGY ANALYSIS
+        print(f"🌐 Analyzing model topology...")
+        classifier = ArchitectureClassifier(adapter)
+        clusters = classifier.get_clusters(model)
+        topo_type = classifier.get_topology_type(model)
+        print(f"✅ Detected {topo_type} architecture with {len(clusters)} pruning clusters.")
+
         # PHASE 1: SCORE CALCULATION
-        # We delegate the math to the backend adapter which handles framework-specific
-        # operations (like Torch Hooks or Keras GradientTapes).
-        print(f"🔍 Analyzing model using '{self.method}' method...")
-        score_map = adapter.get_score_map(model, loader, self.method)
+        if self.method in ('hybrid', 'meta'):
+            print(f"🧠 Executing Hybrid Meta-Pruning Engine (Literature-Grounded)...")
+            from .meta_criteria import HybridMetaPruner
+            meta_engine = HybridMetaPruner(adapter, mode=self.config.get('meta_mode', 'smooth'))
+            score_map = meta_engine.calculate_hybrid_scores(model, loader)
+        else:
+            print(f"🔍 Analyzing model using '{self.method}' method...")
+            score_map = adapter.get_score_map(model, loader, self.method)
 
         # PHASE 2: MASK BUILDING
-        # Converts raw importance scores into binary decisions. 
-        # If scope='global', we flatten all scores before thresholding.
         print(f"🏗️ Building masks (scope: {self.scope}, ratio: {ratio})...")
-        masks = build_pruning_masks(score_map, ratio, scope=self.scope)
+        masks = build_pruning_masks(score_map, ratio, scope=self.scope, clusters=clusters)
 
         # PHASE 3: PHYSICAL SURGERY
-        # This is the most complex step where we 'shrink' the tensors and 
-        # reconstruct the model graph to maintain connectivity.
         print(f"✂️ Applying physical surgery...")
         start_time = time.time()
-        
-        # The adapter performs framework-specific surgery (e.g., param slicing or functional rebuild)
         pruned_model = adapter.apply_surgery(model, masks)
-        
         duration = time.time() - start_time
 
+        if save_pruned_path:
+            out = Path(str(save_pruned_path))
+            out.parent.mkdir(parents=True, exist_ok=True)
+            adapter.save_checkpoint(pruned_model, save_pruned_path)
+            print(f"💾 Saved pruned checkpoint to: {out}")
+
         return pruned_model, masks, duration
+
+    @framework_dispatch
+    def prune_custom_model(self, model: Any, loader: Any, ratio: float = 0.5,
+                           adapter: Optional[FrameworkAdapter] = None,
+                           checkpoint_path: Optional[str] = None,
+                           save_pruned_path: Optional[str] = None) -> Tuple[Any, Dict[str, np.ndarray], float]:
+        """
+        Unified API endpoint for pruning user-provided custom pre-trained models.
+        
+        This method skips the baseline training phase and performs direct 
+        sensitivity analysis and pruning.
+        
+        Args:
+            model (Any): Pre-trained framework-specific model.
+            loader (Any): Calibration data.
+            ratio (float): Target pruning ratio.
+            adapter (Optional[FrameworkAdapter]): Automatically injected.
+            
+        Returns:
+            Tuple[Any, Dict[str, np.ndarray], float]: Pruned model and metadata.
+        """
+        print("📥 Importing custom pre-trained model...")
+        validator = ModelValidator()
+        if not validator.validate_model(model, adapter):
+            raise ValueError("Model validation failed. Ensure the model is traceable and prunable.")
+
+        if checkpoint_path:
+            adapter.load_checkpoint(model, checkpoint_path)
+            print(f"📂 Loaded pre-trained checkpoint from: {checkpoint_path}")
+
+        return self.prune(
+            model,
+            loader,
+            ratio=ratio,
+            adapter=adapter,
+            save_pruned_path=save_pruned_path,
+        )

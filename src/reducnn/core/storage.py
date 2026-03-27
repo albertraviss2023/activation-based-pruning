@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -68,6 +69,42 @@ class CloudStorage:
         # Ensure the target directory exists before returning the path
         final_path.mkdir(parents=True, exist_ok=True)
         return final_path.resolve()
+
+    def copy_into_project(self, source_path: str, project_relative_dest: str) -> Path:
+        """Copies a file from Drive/local external path into the repo workspace.
+
+        Args:
+            source_path (str): Absolute or relative path to the source file.
+            project_relative_dest (str): Destination path relative to project root.
+
+        Returns:
+            Path: Resolved destination path in the project.
+        """
+        src = Path(source_path).expanduser().resolve()
+        if not src.exists():
+            raise FileNotFoundError(f"Source file not found: {src}")
+        dst = (Path(os.getcwd()) / project_relative_dest).resolve()
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        return dst
+
+    def copy_from_project(self, project_relative_source: str, destination_path: str) -> Path:
+        """Copies a file from the repo workspace back to Drive/local destination.
+
+        Args:
+            project_relative_source (str): Source path relative to project root.
+            destination_path (str): Absolute or relative destination path.
+
+        Returns:
+            Path: Resolved destination path.
+        """
+        src = (Path(os.getcwd()) / project_relative_source).resolve()
+        if not src.exists():
+            raise FileNotFoundError(f"Project file not found: {src}")
+        dst = Path(destination_path).expanduser().resolve()
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        return dst
 
     def __repr__(self) -> str:
         """Returns a string representation of the CloudStorage environment.

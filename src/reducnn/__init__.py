@@ -19,7 +19,7 @@ from .pruner.surgeon import ReduCNNPruner
 from .analyzer.validator import MethodValidator
 from .analyzer.pareto import ParetoAnalyzer
 
-__version__ = "0.44"
+__version__ = "0.88.0"
 __all__ = [
     "CloudStorage",
     "Orchestrator",

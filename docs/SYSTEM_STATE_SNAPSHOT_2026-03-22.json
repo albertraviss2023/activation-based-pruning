@@ -1,0 +1,109 @@
+{
+  "snapshot_version": "1.0",
+  "snapshot_date": "2026-03-22",
+  "repo": {
+    "name": "activation-based-pruning",
+    "root": "C:/Users/alber/activation-based-pruning"
+  },
+  "environment": {
+    "shell": "powershell",
+    "timezone": "Africa/Kampala",
+    "pythonpath_used_for_review": "src"
+  },
+  "review_scope": {
+    "focus": "visualization overhaul for activation-based pruning presentations",
+    "files_reviewed": [
+      "src/reducnn/pruner/surgeon.py",
+      "src/reducnn/pruner/mask_builder.py",
+      "src/reducnn/backends/torch_backend.py",
+      "src/reducnn/backends/keras_backend.py",
+      "src/reducnn/visualization/animator.py",
+      "src/reducnn/visualization/flow_animator.py",
+      "src/reducnn/visualization/pruning_visualizer.py",
+      "docs/PRESENTATION_NOTEBOOK_GUIDE.md"
+    ]
+  },
+  "core_pipeline": [
+    "trace_graph",
+    "get_score_map",
+    "build_pruning_masks",
+    "apply_surgery"
+  ],
+  "model_topology_summary": {
+    "pytorch": {
+      "vgg16": {
+        "type": "sequential",
+        "prunable_nodes": 16,
+        "clusters": 0
+      },
+      "resnet18": {
+        "type": "residual",
+        "prunable_nodes": 21,
+        "clusters": 4,
+        "cluster_sizes": [3, 3, 3, 3]
+      },
+      "densenet121": {
+        "type": "concatenative",
+        "prunable_nodes": 121,
+        "clusters": 0
+      }
+    },
+    "keras": {
+      "vgg16": {
+        "type": "sequential",
+        "prunable_nodes": 13,
+        "clusters": 0
+      },
+      "resnet50_alias_resnet": {
+        "type": "residual",
+        "prunable_nodes": 53,
+        "clusters": 4
+      },
+      "densenet121": {
+        "type": "concatenative",
+        "prunable_nodes": 120,
+        "clusters": 0
+      }
+    }
+  },
+  "existing_visual_outputs": {
+    "animated": [
+      "outputs/viz_deep_dive/structure/network_surgery.gif",
+      "outputs/viz_deep_dive/method_battle.gif",
+      "outputs/test_global_flow.gif"
+    ],
+    "static_and_html": [
+      "exports/viz_cifar10_real/layer_sensitivity_1.png",
+      "exports/viz_cifar10_real/metrics_comparison_1.png",
+      "exports/viz_cifar10_real/decision_agreement_1.png",
+      "exports/viz_cifar10_real/xray_animation.html",
+      "exports/viz_cifar10_real/hybrid_contribution_graph.html"
+    ]
+  },
+  "diagnosed_gaps": [
+    "Candidate selection is not clearly visualized at per-channel granularity.",
+    "Dependency discovery stage is mostly static and not a clear sweep narrative.",
+    "Surgery animation does not strongly communicate candidate->pruned->kept transitions.",
+    "Final before/after architecture comparison lacks strong synchronized graph storytelling.",
+    "Multiple visualization modules overlap and should be consolidated around one trace artifact."
+  ],
+  "recommended_overhaul": {
+    "phase_1": "Create a unified PruningTrace artifact carrying graph, clusters, per-channel scores, masks, harmonized masks, and before/after stats.",
+    "phase_2": "Build candidate-discovery graph view with metric toggle and dependency-aware color states.",
+    "phase_3": "Build animated surgery timeline: score heat -> candidate pulse -> cut -> dependency propagation -> settle.",
+    "phase_4": "Build side-by-side before/after architecture graph with synchronized layout and channel-aware node sizing.",
+    "phase_5": "Wire upgraded visuals into notebook Presentation Mode and export pipeline.",
+    "phase_6": "Add tests for visual data correctness and export integrity."
+  },
+  "first_implementation_targets": [
+    "src/reducnn/visualization/animator.py",
+    "src/reducnn/visualization/flow_animator.py",
+    "src/reducnn/pruner/surgeon.py",
+    "src/reducnn/pruner/mask_builder.py"
+  ],
+  "artifacts_created_by_this_step": [
+    "docs/VISUALIZATION_REVIEW_SUMMARY_2026-03-22.md",
+    "docs/SYSTEM_STATE_SNAPSHOT_2026-03-22.json",
+    "docs/STATE_RESTORE_PROMPT_2026-03-22.md"
+  ]
+}

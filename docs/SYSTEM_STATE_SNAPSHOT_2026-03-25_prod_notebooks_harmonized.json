@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-03-25T13:05:00",
+  "cwd": "C:\\Users\\alber\\activation-based-pruning",
+  "purpose": "production_notebooks_method_harmonization_and_csv_artifacts",
+  "scope": {
+    "notebooks": [
+      "experiments_cifar10.ipynb",
+      "experiments_cifar100.ipynb",
+      "experiments_cat_dog.ipynb",
+      "experiments_cifar100_github.ipynb",
+      "experiments_cat_dog_github.ipynb"
+    ],
+    "methods_registered": [
+      "custom_l2",
+      "chip",
+      "custom_nisp",
+      "custom_spectral_energy"
+    ],
+    "decorator_mode": "framework-specific (torch + keras)",
+    "artifact_exports": "auto CSV export cell + helper to outputs/.../tables and mirror to saved_models/artifacts/.../tables"
+  },
+  "validation": [
+    "python -m pytest -q tests/test_notebook_experiments.py -q"
+  ],
+  "notes": [
+    "Legacy conflicting registration cells in experiments_cifar10 were disabled.",
+    "Canonical registration now uses backend tools for math/collection consistency."
+  ]
+}

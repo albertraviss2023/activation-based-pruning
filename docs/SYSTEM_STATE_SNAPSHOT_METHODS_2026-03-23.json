@@ -1,0 +1,73 @@
+{
+  "snapshot_version": "1.0",
+  "snapshot_date": "2026-03-23",
+  "repo": {
+    "name": "activation-based-pruning",
+    "root": "C:/Users/alber/activation-based-pruning"
+  },
+  "milestone": {
+    "name": "method-surface hardening + literature-fidelity rewrite",
+    "status": "planning",
+    "goal": "Bundle only APoZ/Mean-Activation/L1; move all other methods to custom registration and raise custom-method fidelity to 100% against literature."
+  },
+  "decisions_locked": {
+    "bundled_methods_only": [
+      "apoz",
+      "mean_abs_act",
+      "l1_norm"
+    ],
+    "non_bundled_to_custom_registration": [
+      "chip",
+      "l2_norm",
+      "taylor",
+      "variance_act",
+      "random",
+      "global custom methods"
+    ],
+    "fidelity_policy": "No method name should claim literature method unless algorithm/protocol is implemented faithfully.",
+    "framework_consistency": "PyTorch and Keras implementations must aggregate equivalent tensors/statistics (same scoring semantics)."
+  },
+  "current_findings": {
+    "report": "docs/LITERATURE_FIDELITY_REPORT_v2.md",
+    "toyish_custom_methods": [
+      "custom_nisp",
+      "custom_senpis",
+      "custom_reprune",
+      "custom_thinet"
+    ],
+    "approximate_custom_methods": [
+      "custom_entropy",
+      "custom_class_entropy",
+      "custom_spectral_energy",
+      "custom_tis"
+    ],
+    "scope_mismatch": "Global custom methods currently executed with scope='local' in experiments_custom_method_registration_minimal.ipynb loops."
+  },
+  "recent_validation": {
+    "full_pytest": "38 passed, 1 skipped (2026-03-23)",
+    "notes": [
+      "Core regressions were fixed in torch prunable-layer selection and global top-k masking.",
+      "Method fidelity still requires algorithmic rewrites, not only test pass."
+    ]
+  },
+  "files_of_interest": [
+    "docs/LITERATURE_FIDELITY_REPORT_v2.md",
+    "experiments_custom_method_registration_minimal.ipynb",
+    "src/reducnn/pruner/criteria.py",
+    "src/reducnn/pruner/chip.py",
+    "src/reducnn/backends/torch_backend.py",
+    "src/reducnn/backends/keras_backend.py"
+  ],
+  "next_actions": [
+    "Constrain bundled method surface to APoZ/Mean-Activation/L1 only.",
+    "Refactor CHIP and L2 into custom-registration-only notebook implementations.",
+    "Rewrite NISP/SeNPIS/TIS/REPrune/ThiNet custom methods to paper-faithful procedures.",
+    "Align PyTorch/Keras scoring semantics one-to-one and add cross-backend parity checks.",
+    "Re-run notebook + tests and update fidelity report to v3 with post-fix evidence."
+  ],
+  "state_files": {
+    "snapshot_json": "docs/SYSTEM_STATE_SNAPSHOT_METHODS_2026-03-23.json",
+    "restore_prompt_md": "docs/STATE_RESTORE_PROMPT_METHODS_2026-03-23.md",
+    "summary_md": "docs/METHODS_FIDELITY_SUMMARY_2026-03-23.md"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-03-25T12:10:00",
+  "cwd": "C:\\Users\\alber\\activation-based-pruning",
+  "purpose": "post_v0.88_release_snapshot",
+  "version": "0.88.0",
+  "validated_tests": [
+    "tests/test_notebook_experiments.py",
+    "tests/test_v7_dual_framework.py",
+    "tests/test_viz_persistence.py (with PYTHONPATH=src)"
+  ],
+  "files": {
+    "version_files": [
+      "src/reducnn/__init__.py",
+      "pyproject.toml",
+      "CHANGELOG.md",
+      "docs/RELEASE_NOTES_v0.88.0.md"
+    ],
+    "production_notebooks": [
+      "experiments_cifar10.ipynb",
+      "experiments_cifar100.ipynb",
+      "experiments_cat_dog.ipynb",
+      "experiments_cifar100_github.ipynb",
+      "experiments_cat_dog_github.ipynb"
+    ],
+    "artifact_persistence": [
+      "src/reducnn/visualization/persistence.py",
+      "src/reducnn/visualization/stakeholder.py",
+      "src/reducnn/visualization/research.py",
+      "src/reducnn/visualization/animator.py"
+    ],
+    "backend_defaults": [
+      "src/reducnn/backends/torch_backend.py",
+      "src/reducnn/backends/keras_backend.py",
+      "src/reducnn/pruner/custom_method_tools.py"
+    ]
+  },
+  "notes": [
+    "Calibration now defaults to full loader when no batch cap is configured",
+    "Baseline load-or-train behavior enforced by backend baseline run naming",
+    "Artifacts now persist with run id via environment bootstrap in production notebooks"
+  ]
+}

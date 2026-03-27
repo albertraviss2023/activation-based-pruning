@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-03-25T13:28:00",
+  "cwd": "C:\\Users\\alber\\activation-based-pruning",
+  "purpose": "professional_workflow_docs_added",
+  "docs_added": [
+    "docs/WORKFLOWS_HOWTO.md"
+  ],
+  "docs_updated": [
+    "README.md"
+  ],
+  "coverage": [
+    "A: custom method registration + pretrained usage",
+    "B: load pretrained -> prune -> heal -> visualize -> save",
+    "C: train baseline -> prune -> heal -> visualize -> save",
+    "D: visualization deep dive with artifact persistence",
+    "GitHub + VS Code + Colab setup"
+  ],
+  "notes": [
+    "Production notebooks already include unified custom registration and CSV export cells.",
+    "Guide aligns with v0.88 artifact and model directory conventions."
+  ]
+}

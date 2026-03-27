@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from typing import Dict
+from .persistence import persist_matplotlib_figure
 
 def plot_layer_sensitivity(masks: Dict[str, np.ndarray], title_prefix: str = "Model"):
     """
@@ -13,25 +14,52 @@ def plot_layer_sensitivity(masks: Dict[str, np.ndarray], title_prefix: str = "Mo
         
     layers_list = sorted(masks.keys())
     keep_ratios = [float(np.mean(masks[l]) * 100) for l in layers_list]
-    
-    fig, ax = plt.subplots(figsize=(12, 5))
+    n_layers = len(layers_list)
+
+    fig_w = float(np.clip(0.22 * n_layers + 8.0, 12.0, 32.0))
+    fig_h = 6.5 if n_layers > 80 else 5.0
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    x = np.arange(n_layers)
     colors = plt.cm.RdYlGn(np.array(keep_ratios) / 100.0)
-    bars = ax.bar(layers_list, keep_ratios, color=colors, alpha=0.8, edgecolor='black')
-    
-    ax.axhline(y=np.mean(keep_ratios), color='blue', linestyle='--', label=f'Avg Keep: {np.mean(keep_ratios):.1f}%')
+    bars = ax.bar(x, keep_ratios, color=colors, alpha=0.85, edgecolor='black', linewidth=0.5)
+
+    avg_keep = float(np.mean(keep_ratios))
+    ax.axhline(y=avg_keep, color='blue', linestyle='--', label=f'Avg Keep: {avg_keep:.1f}%')
     ax.set_title(f"{title_prefix} - Layer-Wise Pruning Sensitivity", fontsize=15, fontweight='bold')
     ax.set_ylabel("Filters Kept (%)", fontsize=12)
-    plt.xticks(rotation=45, ha='right', fontsize=10)
+
+    # Dense models can have 100+ conv layers; render only a subset of labels.
+    if n_layers <= 40:
+        ax.set_xticks(x)
+        ax.set_xticklabels(layers_list, rotation=45, ha='right', fontsize=9)
+    else:
+        step = max(1, int(np.ceil(n_layers / 28)))
+        ticks = x[::step]
+        ax.set_xticks(ticks)
+        ax.set_xticklabels([layers_list[i] for i in ticks], rotation=60, ha='right', fontsize=8)
+        ax.set_xlabel(f"Layer index (showing every {step}th label out of {n_layers})", fontsize=10)
+
     ax.set_ylim(0, 110)
     ax.legend()
     ax.grid(axis='y', alpha=0.3, linestyle=':')
-    
-    for bar in bars:
-        h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., h + 1, f'{h:.1f}%', 
-                ha='center', va='bottom', fontsize=9, fontweight='bold')
+
+    # Only annotate bar values when the plot is small enough to stay readable.
+    if n_layers <= 35:
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                h + 1.0,
+                f"{h:.1f}%",
+                ha='center',
+                va='bottom',
+                fontsize=8,
+                fontweight='bold',
+            )
     
     plt.tight_layout()
+    persist_matplotlib_figure(fig, f"{title_prefix}_layer_sensitivity")
     plt.show()
 
 def plot_metrics_comparison(b_stats, p_stats):
@@ -76,6 +104,7 @@ def plot_metrics_comparison(b_stats, p_stats):
                     ha='center', va='bottom', fontsize=9, fontweight='bold')
     
     plt.tight_layout()
+    persist_matplotlib_figure(fig, "final_metrics_comparison")
     plt.show()
     
     reduction_pct = (1 - p_dict['FLOPs']/b_dict['FLOPs']) * 100
@@ -115,6 +144,7 @@ def plot_training_history(history: Dict[str, list], title: str = "Training Histo
     ax2.legend()
 
     plt.tight_layout()
+    persist_matplotlib_figure(fig, f"{title}_training_history")
     plt.show()
 
 

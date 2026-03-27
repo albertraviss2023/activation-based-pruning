@@ -1,0 +1,99 @@
+{
+  "snapshot_version": "1.2",
+  "snapshot_date": "2026-03-23",
+  "repo": {
+    "name": "activation-based-pruning",
+    "root": "C:/Users/alber/activation-based-pruning"
+  },
+  "environment": {
+    "shell": "powershell",
+    "timezone": "Africa/Kampala",
+    "pythonpath_for_tests": "src"
+  },
+  "milestone": {
+    "name": "visualization deep-dive overhaul",
+    "status": "in_progress",
+    "goal": "Presentation-grade, dependency-aware pruning visualization pipeline with backend-agnostic notebook flow."
+  },
+  "notebook": {
+    "path": "visualization_deep_dive.ipynb",
+    "backend_agnostic": true,
+    "data_leakage_policy": "Use validation split for pruning calibration and visual scoring; reserve test split for final evaluation/inference.",
+    "policy_controls": {
+      "DEMO_MODE": "pretrained_only",
+      "CHECKPOINT_STAMP": "latest",
+      "USE_PRETRAINED_INIT": false
+    },
+    "checkpoint_layout": {
+      "root": "saved_models",
+      "baselines": "saved_models/baselines/<backend>/<dataset>/<model>/",
+      "pruned_raw": "saved_models/pruned_raw/<backend>/<dataset>/<model>/<method>/",
+      "fine_tuned": "saved_models/fine_tuned/<backend>/<dataset>/<model>/<method>/"
+    },
+    "legacy_compat": "Legacy single-file names are auto-discovered in policy cell fallback logic.",
+    "phase_artifacts": {
+      "phase3_manifest": "<export_dir>/<artifact_tag>_phase3_outputs.json",
+      "phase4_manifest": "<export_dir>/<artifact_tag>_phase4_outputs.json",
+      "phase5_manifest": "<export_dir>/<artifact_tag>_phase5_outputs.json"
+    },
+    "stability_guards": [
+      "Skip heavy global GIF rendering for dense graphs (e.g., DenseNet) to reduce kernel OOM risk.",
+      "Finetuned checkpoint is loaded into pruned architecture for inference consistency."
+    ]
+  },
+  "code_touchpoints": [
+    "visualization_deep_dive.ipynb",
+    "src/reducnn/backends/keras_backend.py",
+    "src/reducnn/visualization/research.py",
+    "src/reducnn/visualization/pruning_visualizer.py"
+  ],
+  "validation": {
+    "tests_passed": [
+      "tests/test_visualization_deep_dive_notebook_backend.py",
+      "tests/test_deep_dive_backend_agnostic.py",
+      "tests/test_viz_overhaul_story.py",
+      "tests/test_viz_deep_dive_all_models_matrix_schema.py"
+    ],
+    "reports": {
+      "backend_smoke": "outputs/viz_deep_dive/agnostic_validation/backend_agnostic_report.json",
+      "all_models_matrix": "outputs/viz_deep_dive/agnostic_validation/all_models_matrix_latest.json"
+    },
+    "matrix_latest": {
+      "pytorch": {
+        "passed": 4,
+        "total": 4,
+        "models": [
+          "resnet18",
+          "vgg16",
+          "densenet121",
+          "mobilenet_v2"
+        ]
+      },
+      "keras": {
+        "passed": 4,
+        "total": 4,
+        "models": [
+          "resnet18",
+          "vgg16",
+          "densenet121",
+          "mobilenet_v2"
+        ]
+      }
+    }
+  },
+  "known_issues_or_risks": [
+    "Some heavy GIF outputs may be intentionally skipped for very dense architectures to preserve notebook stability.",
+    "MobileNet recovery quality may vary significantly with pruning aggressiveness and safe-mode settings.",
+    "Presentation legibility for method-battle/global-surgery animations can still be improved for dense graphs."
+  ],
+  "next_actions": [
+    "Validate per-model artifact completeness via phase manifests after each run.",
+    "Improve animation readability (label density, final-state persistence, delta emphasis).",
+    "Document a one-path presenter workflow for pretrained-only demos."
+  ],
+  "state_files": {
+    "summary_md": "docs/VISUALIZATION_REVIEW_SUMMARY_2026-03-23.md",
+    "snapshot_json": "docs/SYSTEM_STATE_SNAPSHOT_2026-03-23.json",
+    "restore_prompt_md": "docs/STATE_RESTORE_PROMPT_2026-03-23.md"
+  }
+}

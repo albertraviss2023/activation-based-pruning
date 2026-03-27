@@ -127,3 +127,34 @@ class FrameworkAdapter(ABC):
     def load_checkpoint(self, model: Any, path: str) -> None:
         """Loads model weights from disk."""
         pass
+
+    @abstractmethod
+    def trace_graph(self, model: Any) -> Dict[str, Any]:
+        """
+        Traces the model's computational graph to identify dependencies.
+        
+        Returns:
+            Dict[str, Any]: A standardized graph representation containing
+                nodes, edges, and structural clusters.
+        """
+        pass
+
+    @abstractmethod
+    def classify_architecture(self, model: Any) -> str:
+        """
+        Categorizes the model based on its topological features.
+        
+        Returns:
+            str: 'sequential', 'residual', or 'concatenative'.
+        """
+        pass
+
+    @abstractmethod
+    def get_multi_metric_scores(self, model: Any, loader: Any, metrics: List[str]) -> Dict[str, Dict[str, np.ndarray]]:
+        """
+        Calculates multiple pruning metrics in a single optimization pass.
+        
+        Returns:
+            Dict[str, Dict[str, np.ndarray]]: Mapping of metric_name -> {layer_name: scores}.
+        """
+        pass

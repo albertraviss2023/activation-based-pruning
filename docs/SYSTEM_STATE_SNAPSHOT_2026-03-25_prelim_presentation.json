@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-03-25T22:48:30",
+  "purpose": "preliminary_results_presentation_created",
+  "artifact": {
+    "latest": "outputs/presentation/preliminary_results_midway_latest.pptx",
+    "versioned": "outputs/presentation/preliminary_results_midway_20260325_224618.pptx",
+    "slides": 12
+  },
+  "data_sources": [
+    "outputs/custom_method_matrix/matrix_all_requested_models_after_keras_fix_20260324.csv",
+    "outputs/custom_method_matrix/matrix_all_requested_models_after_keras_fix_summary_20260324.csv"
+  ],
+  "notes": [
+    "Deck includes placeholders for manual plot insertion.",
+    "Narrative optimized for midway thesis preliminary results section."
+  ]
+}

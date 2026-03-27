@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from typing import Any, List, Tuple, Optional
 from ..core.decorators import framework_dispatch, logger
-from ..pruner.surgeon import ReduCNNPruner
 
 class ParetoAnalyzer:
     """Analyzes the trade-off between model efficiency and predictive accuracy.
@@ -11,16 +10,16 @@ class ParetoAnalyzer:
     possible accuracy for a given computational budget (FLOPs).
 
     Attributes:
-        method (str): The pruning criterion to test (e.g., 'taylor').
+        method (str): The pruning criterion to test (e.g., 'apoz').
         scope (str): Pruning scope ('local' or 'global').
         config (dict): Configuration for the pruner.
     """
-    def __init__(self, method: str = 'taylor', scope: str = 'local', 
+    def __init__(self, method: str = 'apoz', scope: str = 'local', 
                  config: dict = None):
         """Initializes the ParetoAnalyzer.
 
         Args:
-            method (str): Scoring method. Defaults to 'taylor'.
+            method (str): Scoring method. Defaults to 'apoz'.
             scope (str): Thresholding scope. Defaults to 'local'.
             config (dict, optional): Configuration parameters. Defaults to None.
         """
@@ -55,16 +54,18 @@ class ParetoAnalyzer:
         b_stats = adapter.get_stats(model)
         base_acc = adapter.evaluate(model, val_loader if val_loader else loader)
         print(f"   Baseline Acc: {base_acc:.2f}%, FLOPs: {b_stats[0]/1e6:.2f}M")
-        
+
         # Initialize the pruner with the specified criterion
+        from ..pruner.surgeon import ReduCNNPruner
         pruner = ReduCNNPruner(method=self.method, scope=self.scope, config=self.config)
+
         results = []
         
         # Iterate through ratios and perform structural pruning
         for r in ratios:
             print(f"\n--- Testing Prune Ratio: {r} ---")
             # Prune a copy of the model to keep the original baseline intact
-            pruned_model, _ = pruner.prune(model, loader, ratio=r)
+            pruned_model, _, _ = pruner.prune(model, loader, ratio=r, adapter=adapter)
             
             # Evaluate the smaller model
             acc = adapter.evaluate(pruned_model, val_loader if val_loader else loader)
