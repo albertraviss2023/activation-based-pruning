@@ -5,31 +5,61 @@ from ..core.exceptions import MethodRegistrationError
 # Stores the mapping of (method_name, framework) to the actual implementation.
 # The 'framework' key can be "torch", "keras", or "global" (for agnostic methods).
 _PRUNING_REGISTRY: Dict[Tuple[str, str], Callable[..., Any]] = {}
+# Stores metadata about the method, such as supported scopes ('local', 'global').
+_METHOD_METADATA: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
-def register_method(name: str, framework: str = "global") -> Callable:
-    """Decorator to register a custom pruning score function.
-
-    This allows the user or the library to extend the available pruning 
-    criteria (e.g., L1, L2, Taylor) and associate them with specific backends.
+def list_methods(framework: Optional[str] = None, include_global: bool = True) -> List[Dict[str, Any]]:
+    """Lists registered pruning methods with their metadata.
 
     Args:
-        name (str): The unique name of the pruning method (e.g., 'l1_norm').
-        framework (str): The framework this method is intended for ('torch', 
-            'keras', or 'global'). Defaults to 'global' (framework-agnostic).
+        framework: Optional framework filter such as "torch" or "keras".
+        include_global: When filtering by framework, include framework-agnostic
+            methods registered as "global".
+
+    Returns:
+        A stable list of dictionaries with ``name``, ``framework``, and ``supported_scopes``.
+    """
+    fw = framework.lower().strip() if framework else None
+    rows: List[Dict[str, Any]] = []
+    for key in sorted(_PRUNING_REGISTRY.keys()):
+        name, method_framework = key
+        if fw is not None and method_framework != fw:
+            if not (include_global and method_framework == "global"):
+                continue
+        meta = _METHOD_METADATA.get(key, {})
+        rows.append({
+            "name": name, 
+            "framework": method_framework,
+            "supported_scopes": meta.get("supported_scopes", ["local", "global"])
+        })
+    return rows
+
+def list_method_names(framework: Optional[str] = None, include_global: bool = True) -> List[str]:
+    """Lists unique registered method names for a framework."""
+    return sorted({row["name"] for row in list_methods(framework, include_global=include_global)})
+
+def register_method(name: str, framework: str = "global", supported_scopes: Optional[List[str]] = None) -> Callable:
+    """Decorator to register a custom pruning score function with scope metadata.
+
+    Args:
+        name (str): The unique name of the pruning method.
+        framework (str): The framework context ('torch', 'keras', or 'global').
+        supported_scopes (Optional[List[str]]): List of supported pruning scopes 
+            (e.g., ['local'], ['global'], or ['local', 'global']). 
+            Defaults to both if not specified.
 
     Returns:
         Callable: The decorator function.
-
-    Raises:
-        MethodRegistrationError: If the provided function is not callable.
     """
     def decorator(func: Callable) -> Callable:
         if not callable(func):
             raise MethodRegistrationError(f"Pruning method {name} must be callable.")
         
-        # Normalize keys for case-insensitive lookup
         key = (name.lower().strip(), framework.lower().strip())
         _PRUNING_REGISTRY[key] = func
+        _METHOD_METADATA[key] = {
+            "supported_scopes": supported_scopes or ["local", "global"]
+        }
         return func
     return decorator
 

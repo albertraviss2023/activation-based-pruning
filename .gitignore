@@ -45,6 +45,10 @@ report_artifacts/
 reports/
 thesis/
 custom_methods/
+ui/
+docker-compose.yml
+docs/UI_GPU_GUIDE.md
+docs/COLAB_UI.md
 *.pth
 *.pt
 *.onnx

@@ -713,11 +713,9 @@ class PyTorchAdapter(FrameworkAdapter):
         """
         Computes importance scores for a specific layer using the requested method.
         """
-        from ..pruner.registry import CRITERIA_REGISTRY
-        if method not in CRITERIA_REGISTRY:
-            raise ValueError(f"Method {method} not registered.")
-            
-        score_map = CRITERIA_REGISTRY[method](self, model, loader)
+        # We call get_score_map which correctly handles the registry and returns all layers.
+        # This is more robust than trying to call the registry directly for one layer.
+        score_map = self.get_score_map(model, loader, method)
         
         if layer_name in score_map:
             return score_map[layer_name]
@@ -727,7 +725,8 @@ class PyTorchAdapter(FrameworkAdapter):
             if name == layer_name or name.endswith(f".{layer_name}"):
                 return score
                 
-        raise ValueError(f"No importance scores found for layer {layer_name} using {method}.")
+        raise ValueError(f"No importance scores found for layer {layer_name} using {method}. "
+                         f"Available layers: {list(score_map.keys())}")
 
     def get_model(self, model_type: str, input_shape: Tuple[int, int, int] = None, 
                   num_classes: int = None, pretrained: bool = False) -> nn.Module:
@@ -992,6 +991,54 @@ class PyTorchAdapter(FrameworkAdapter):
             "filters": convs[0].weight.data.cpu().numpy()
         }
 
+    def _profile_flops_with_hooks(self, model: nn.Module, dummy_in: Any) -> float:
+        """Fallback FLOPs estimator for models that THOP cannot profile.
+
+        Counts Conv2d and Linear multiply-accumulate operations from an actual
+        forward pass. This keeps experiment artifacts from silently exporting
+        zero FLOPs when third-party profiling fails on residual/custom modules.
+        """
+        flops = 0.0
+        hooks = []
+        was_training = model.training
+
+        def conv_hook(module, _inputs, output):
+            nonlocal flops
+            if not hasattr(output, "shape") or len(output.shape) < 4:
+                return
+            batch_size = int(output.shape[0])
+            out_channels = int(output.shape[1])
+            out_h = int(output.shape[2])
+            out_w = int(output.shape[3])
+            kernel_h, kernel_w = module.kernel_size
+            kernel_ops = (int(module.in_channels) // int(module.groups)) * int(kernel_h) * int(kernel_w)
+            flops += float(batch_size * out_channels * out_h * out_w * kernel_ops)
+
+        def linear_hook(module, _inputs, output):
+            nonlocal flops
+            if not hasattr(output, "numel"):
+                return
+            flops += float(output.numel() * int(module.in_features))
+
+        try:
+            for module in model.modules():
+                if isinstance(module, nn.Conv2d):
+                    hooks.append(module.register_forward_hook(conv_hook))
+                elif isinstance(module, nn.Linear):
+                    hooks.append(module.register_forward_hook(linear_hook))
+
+            model.eval()
+            with torch.no_grad():
+                model(dummy_in)
+        finally:
+            for hook in hooks:
+                hook.remove()
+            model.train(was_training)
+
+        if not np.isfinite(flops) or flops <= 0:
+            raise RuntimeError(f"hook-based FLOPs profiling produced invalid value: {flops}")
+        return float(flops)
+
     def get_stats(self, model: nn.Module, loader: Any = None) -> Tuple[float, float]:
         """Calculates FLOPs and Parameter count.
 
@@ -1015,15 +1062,26 @@ class PyTorchAdapter(FrameworkAdapter):
         # Calculate parameters directly for 100% accuracy
         total_params = sum(p.numel() for p in model.parameters())
         
+        device = next(model.parameters()).device
+        dummy_in = torch.randn(1, *in_shape).to(device)
+
         try:
             from thop import profile
             # Using 'thop' for FLOP estimation
-            device = next(model.parameters()).device
-            dummy_in = torch.randn(1, *in_shape).to(device)
             f, _ = profile(model, inputs=(dummy_in,), verbose=False)
-            return float(f), float(total_params)
-        except Exception: 
-            return 0.0, float(total_params)
+            f = float(f)
+            if np.isfinite(f) and f > 0:
+                return f, float(total_params)
+            raise RuntimeError(f"THOP returned invalid FLOPs value: {f}")
+        except Exception as thop_exc:
+            try:
+                f = self._profile_flops_with_hooks(model, dummy_in)
+                return float(f), float(total_params)
+            except Exception as hook_exc:
+                raise RuntimeError(
+                    f"FLOPs profiling failed with THOP ({thop_exc}) "
+                    f"and hook fallback ({hook_exc})"
+                ) from hook_exc
 
     def save_checkpoint(self, model: nn.Module, path: str):
         """Saves model state dict."""

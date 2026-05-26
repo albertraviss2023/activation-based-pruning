@@ -41,18 +41,6 @@ For development tools:
 pip install -e ".[dev]"
 ```
 
-For the Dockerized UI dependencies outside Docker:
-
-```bash
-pip install -e ".[ui]"
-```
-
-For Colab GPU use, install the same UI extras inside the Colab runtime:
-
-```python
-!pip install -q -e ".[ui]"
-```
-
 ## Quick Start: PyTorch
 
 ```python
@@ -170,90 +158,6 @@ The `tools` object provides helpers for activation collection, channel matrix
 conversion, weight norms, CHIP-style scores, class-wise Taylor matrices, and
 other reusable scoring utilities.
 
-## Dockerized UI
-
-ReduCNN Studio is a Streamlit app for configuring pruning runs through a clean
-interface. It supports:
-
-- model selection
-- dataset selection: Cat vs Dog, CIFAR-10, CIFAR-100
-- pruning method selection from the live ReduCNN registry
-- custom method loading from `custom_methods/`
-- baseline selection: load latest, train new, load checkpoint, or use model initialization
-- checkpoint saving for baseline, raw pruned, and fine-tuned models
-- layer sensitivity plots and CSV tables saved to disk
-- smoke-mode synthetic runs
-- checkpoint and summary artifact creation
-
-The app reports the active runtime at the top of the page. For GPU pruning, it
-should show `Runtime: CUDA GPU`.
-
-Start it with:
-
-```bash
-docker compose up --build reducnn-ui
-```
-
-Open:
-
-```text
-http://localhost:8501
-```
-
-UI artifacts are written to `outputs/ui_runs/` by default. The Docker Compose
-configuration mounts `data/`, `outputs/`, `saved_models/`, and `custom_methods/`
-so files created in the container are visible in the repo workspace.
-
-Custom methods for the UI:
-
-1. Add a `.py` file under `custom_methods/`.
-2. Register methods with `@register_method(...)`.
-3. Optionally add `METHOD_METADATA` for a nicer UI label.
-4. Restart or refresh the app.
-
-Example:
-
-```python
-from reducnn.pruner import register_method
-
-METHOD_METADATA = {
-    "my_energy_score": {
-        "label": "My Energy Score",
-        "description": "Ranks channels by RMS weight energy.",
-    }
-}
-
-@register_method("my_energy_score", framework="global")
-def my_energy_score(layer, tools=None, **kwargs):
-    return tools.weight_l2(layer, mode="rms")
-```
-
-### Running the UI on Colab GPU
-
-To use a Colab GPU from the UI, run Streamlit inside the Colab runtime and open
-it through a tunnel. A local Docker container cannot borrow the Colab GPU.
-
-Quick Colab shape:
-
-```python
-!git clone https://github.com/albertraviss2023/activation-based-pruning.git
-%cd activation-based-pruning
-!pip install -q -e ".[ui]"
-!streamlit run ui/app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true > /content/reducnn_streamlit.log 2>&1 &
-```
-
-Then expose it:
-
-```python
-!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /content/cloudflared
-!chmod +x /content/cloudflared
-!/content/cloudflared tunnel --url http://localhost:8501
-```
-
-Open the printed `trycloudflare.com` URL and confirm that the UI says
-`Runtime: CUDA GPU`. Full steps are in
-[Running ReduCNN Studio on Google Colab](docs/COLAB_UI.md).
-
 ## High-Level Orchestration
 
 Use `Orchestrator` when you want a train, prune, fine-tune flow:
@@ -286,7 +190,6 @@ Common output locations:
 - `saved_models/pruned_raw/<backend>/<dataset>/<model>/<method>/`
 - `saved_models/fine_tuned/<backend>/<dataset>/<model>/<method>/`
 - `outputs/experiments/<dataset>/<model>/<run_id>/`
-- `outputs/ui_runs/`
 
 These directories are ignored by git by default.
 
@@ -301,8 +204,7 @@ src/reducnn/
   pruner/          registry, scoring, masks, structural surgery
   visualization/   reporting and diagnostic visualizations
 
-custom_methods/    drop-in methods loaded by the UI
-ui/                Dockerized Streamlit app
+custom_methods/    optional drop-in method examples
 docs/              workflow and project documentation
 examples/          script-based examples
 tests/             regression and workflow tests
@@ -318,8 +220,6 @@ tests/             regression and workflow tests
 - [Objective LFPC Experiments](docs/OBJECTIVE_LFPC_EXPERIMENTS.md)
 - [Experiment Metadata Registry](docs/EXPERIMENT_METADATA_REGISTRY.md)
 - [Experiment Metrics Schema](docs/EXPERIMENT_METRICS_SCHEMA.md)
-- [UI and GPU Execution](docs/UI_GPU_GUIDE.md)
-- [Running ReduCNN Studio on Google Colab](docs/COLAB_UI.md)
 - [Repo Hygiene](docs/REPO_HYGIENE.md)
 - [Module Documentation](MODULE_DOCUMENTATION.md)
 - [Implementation Audit](docs/IMPLEMENTATION_AUDIT_v0.6.6.md)
@@ -328,8 +228,6 @@ tests/             regression and workflow tests
 ## Development Checks
 
 ```bash
-python -m compileall src ui custom_methods
+python -m compileall src custom_methods
 pytest
 ```
-
-For a quick UI wiring check, use ReduCNN Studio with `Smoke mode` enabled.

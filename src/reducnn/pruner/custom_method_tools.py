@@ -51,20 +51,29 @@ class CustomMethodTools:
         return np.asarray(1.0 - ent, dtype=np.float64)
 
     @staticmethod
-    def tis_threshold_aggregate(class_channel_matrix: np.ndarray, percentile: float = 75.0) -> np.ndarray:
+    def tis_threshold_aggregate(class_channel_matrix: np.ndarray, percentile: float = 75.0, eps: float = 1e-12) -> np.ndarray:
+        """TIS-style binary class contribution count.
+
+        For each class row, activations/channels above a class threshold receive
+        importance 1 and the rest receive 0. The final channel score is the sum
+        of class-specific binary contributions. A tiny continuous tie-breaker is
+        added so deterministic top-k selection remains stable when many channels
+        cover the same number of classes.
+        """
         m = np.asarray(class_channel_matrix, dtype=np.float64)
         if m.ndim != 2:
             return np.asarray(m).reshape(-1)
         if m.shape[0] == 0:
             return np.zeros((m.shape[1],), dtype=np.float64)
-        agg = np.zeros((m.shape[1],), dtype=np.float64)
-        hit = np.zeros((m.shape[1],), dtype=np.float64)
+        hits = np.zeros((m.shape[1],), dtype=np.float64)
+        tie = np.zeros((m.shape[1],), dtype=np.float64)
         for row in m:
             tau = float(np.percentile(row, percentile))
-            keep = (row >= tau).astype(np.float64)
-            agg += keep * row
-            hit += keep
-        return agg + 0.05 * hit
+            cls_hits = (row >= tau).astype(np.float64)
+            hits += cls_hits
+            tie += cls_hits * row
+        tie = tie / (np.max(np.abs(tie)) + eps)
+        return hits + (1e-6 * tie)
 
     def _max_batches(self, max_batches: Optional[int]) -> int:
         """Resolves calibration pass length for custom method helpers.
@@ -72,8 +81,9 @@ class CustomMethodTools:
         Policy:
         - Explicit method argument wins.
         - Then explicit config override.
-        - Else default to full loader length when available.
-        - Else use a safe fallback cap for non-sized/infinite iterables.
+        - Else use a bounded default cap, even if loader length is known.
+        - This avoids accidental OOM in notebook custom methods that collect
+          full intermediate activations (for example CHIP-style methods).
         """
         if max_batches is not None:
             return max(1, int(max_batches))
@@ -89,14 +99,15 @@ class CustomMethodTools:
             except Exception:
                 pass
 
+        default_cap = max(1, int(self.config.get("prune_batches_default", 8)))
         try:
             n = int(len(self.loader))
             if n > 0:
-                return n
+                return min(n, default_cap)
         except Exception:
             pass
 
-        return max(1, int(self.config.get("prune_batches_fallback", 128)))
+        return max(1, int(self.config.get("prune_batches_fallback", default_cap)))
 
     def _layer_key(self, layer: Any) -> str:
         if hasattr(layer, "name"):
@@ -298,18 +309,24 @@ class CustomMethodTools:
         return scores
 
     def chip_scores(self, act: np.ndarray, max_spatial: Optional[int] = None) -> np.ndarray:
-        """Backend-level CHIP helper robust to Conv (4D) and Linear/Dense (2D) activations."""
+        """CHIP-style nuclear-norm-change channel independence scores.
+
+        CHIP scores a channel by measuring how much the feature-map nuclear norm
+        changes when that channel is removed. Larger change means the channel is
+        more independent and should be kept.
+        """
         from .chip import chip_channel_independence_scores
 
         a = np.asarray(act)
         if a.ndim == 4:
-            channel_axis = 1 if self.framework == "torch" else -1
             if max_spatial is None:
                 spatial_total = int(a.shape[2] * a.shape[3]) if self.framework == "torch" else int(a.shape[1] * a.shape[2])
                 max_spatial = spatial_total
-            return chip_channel_independence_scores(a, channel_axis=channel_axis, max_spatial=int(max_spatial))
+            nuclear = self.chip_nuclear_independence_scores(a, self.framework, max_spatial=int(max_spatial))
+            if nuclear is not None:
+                return nuclear
 
-        # For non-spatial activations, route through generic 2D chip implementation.
+        # Fallback for non-spatial activations.
         x = self.pooled_nc(a)  # typically (N, C) for dense-like tensors
         return chip_channel_independence_scores(np.asarray(x), channel_axis=1, max_spatial=None)
 
@@ -534,6 +551,12 @@ class CustomMethodTools:
         return None
 
     def nisp_score_map(self, max_batches: Optional[int] = None) -> Dict[str, np.ndarray]:
+        """NISP-style final-response importance propagation.
+
+        This follows the key NISP recurrence ``s_l = |W_{l+1}|^T s_{l+1}``.
+        The final-response layer is initialized from calibration activation
+        energy when available, falling back to weight energy.
+        """
         max_b = self._max_batches(max_batches)
         key = ("nisp_score_map", max_b)
         if key in self._cache:
@@ -562,12 +585,214 @@ class CustomMethodTools:
             else:
                 if own.size != prop.size:
                     own = np.resize(own, prop.size)
-                s_curr = (0.8 * np.asarray(prop, dtype=np.float64)) + (0.2 * own)
+                s_curr = np.asarray(prop, dtype=np.float64)
             s_curr = np.maximum(s_curr, 0.0) + 1e-12
             score_map[lname] = s_curr
             s_next = s_curr
         self._cache[key] = score_map
         return score_map
+
+    def senpis_ablation_scores(self, layer: Any, similarity_threshold: float = 0.90, attenuation_factor: float = 0.5) -> np.ndarray:
+        """SeNPIS-style class-wise filter ablation loss delta with attenuation.
+
+        For each class, this computes the absolute loss change caused by zeroing
+        one filter/channel, averages across classes, then attenuates redundant
+        channels that are highly similar to a stronger channel.
+        """
+        scores = None
+        if self.framework == "torch":
+            scores = self._senpis_ablation_scores_torch(layer)
+        else:
+            scores = self._senpis_ablation_scores_keras(layer)
+        if scores is None:
+            mat = self.classwise_taylor_matrix(layer)
+            if mat is not None:
+                scores = np.mean(np.abs(mat), axis=0)
+            else:
+                scores = self.weight_l2(layer)
+        return self._attenuate_redundant_scores(layer, np.asarray(scores, dtype=np.float64), similarity_threshold, attenuation_factor)
+
+    def _senpis_ablation_scores_torch(self, layer: Any) -> Optional[np.ndarray]:
+        import torch
+        import torch.nn as nn
+
+        if self.model is None or self.loader is None:
+            return None
+        ch = int(getattr(layer, "out_channels", getattr(layer, "out_features", 0)))
+        if ch <= 0:
+            return None
+        max_b = self._max_batches(None)
+        crit = nn.CrossEntropyLoss(reduction="none")
+        base_losses: Dict[int, List[float]] = defaultdict(list)
+        delta: Dict[int, np.ndarray] = defaultdict(lambda: np.zeros((ch,), dtype=np.float64))
+        counts: Dict[int, np.ndarray] = defaultdict(lambda: np.zeros((ch,), dtype=np.float64))
+
+        self.model.eval()
+        batches = []
+        with torch.no_grad():
+            for bi, batch in enumerate(self.loader):
+                if bi >= max_b:
+                    break
+                if not (isinstance(batch, (list, tuple)) and len(batch) >= 2):
+                    continue
+                x, y = batch[0].to(self.device), batch[1].to(self.device)
+                logits = self.model(x)
+                losses = crit(logits, y)
+                batches.append((x, y, losses.detach()))
+                y_np = y.detach().cpu().numpy().reshape(-1)
+                for cls in np.unique(y_np):
+                    idx = np.where(y_np == cls)[0]
+                    if idx.size:
+                        base_losses[int(cls)].append(float(losses[idx].mean().item()))
+
+        if not batches:
+            return None
+
+        def make_hook(channel: int):
+            def _hook(_m, _i, o):
+                out = o.clone()
+                if out.dim() == 4:
+                    out[:, channel, :, :] = 0
+                elif out.dim() == 2:
+                    out[:, channel] = 0
+                return out
+            return _hook
+
+        for c in range(ch):
+            h = layer.register_forward_hook(make_hook(c))
+            with torch.no_grad():
+                for x, y, base_batch_loss in batches:
+                    logits = self.model(x)
+                    losses = crit(logits, y)
+                    y_np = y.detach().cpu().numpy().reshape(-1)
+                    for cls in np.unique(y_np):
+                        idx = np.where(y_np == cls)[0]
+                        if idx.size:
+                            d = abs(float(losses[idx].mean().item()) - float(base_batch_loss[idx].mean().item()))
+                            delta[int(cls)][c] += d
+                            counts[int(cls)][c] += 1
+            h.remove()
+
+        class_scores = []
+        for cls, arr in delta.items():
+            class_scores.append(arr / np.maximum(counts[cls], 1.0))
+        if not class_scores:
+            return None
+        return np.mean(np.stack(class_scores, axis=0), axis=0)
+
+    def _senpis_ablation_scores_keras(self, layer: Any) -> Optional[np.ndarray]:
+        import tensorflow as tf
+
+        if self.model is None or self.loader is None:
+            return None
+        ch = int(getattr(layer, "filters", getattr(layer, "units", 0)))
+        if ch <= 0:
+            return None
+        max_b = self._max_batches(None)
+        model_in = self.model.inputs[0] if isinstance(self.model.inputs, (list, tuple)) else self.model.inputs
+        model_out = self.model.outputs[0] if isinstance(self.model.outputs, (list, tuple)) else self.model.outputs
+        layer_out = layer.output
+        mask_in = tf.keras.Input(shape=tuple(layer_out.shape[1:]))
+        masked = tf.keras.layers.Multiply()([layer_out, mask_in])
+        x = masked
+        take = False
+        for l in self.model.layers:
+            if l is layer:
+                take = True
+                continue
+            if not take:
+                continue
+            try:
+                x = l(x)
+            except Exception:
+                return None
+        masked_model = tf.keras.Model(inputs=[model_in, mask_in], outputs=x)
+        base_model = tf.keras.Model(inputs=model_in, outputs=model_out)
+        delta: Dict[int, np.ndarray] = defaultdict(lambda: np.zeros((ch,), dtype=np.float64))
+        counts: Dict[int, np.ndarray] = defaultdict(lambda: np.zeros((ch,), dtype=np.float64))
+        loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(reduction="none")
+
+        for bi, batch in enumerate(self.loader):
+            if bi >= max_b:
+                break
+            if not (isinstance(batch, (list, tuple)) and len(batch) >= 2):
+                continue
+            x_batch, y_batch = batch[0], batch[1]
+            y_t = tf.cast(tf.reshape(y_batch, [-1]), tf.int32)
+            base_logits = base_model(x_batch, training=False)
+            base_loss = loss_fn(y_t, base_logits).numpy()
+            out_shape = tuple(layer_out.shape[1:])
+            mask = np.ones((int(np.asarray(x_batch).shape[0]), *[int(v) for v in out_shape]), dtype=np.float32)
+            for c in range(ch):
+                m = mask.copy()
+                if len(out_shape) == 3:
+                    m[..., c] = 0.0
+                else:
+                    m[:, c] = 0.0
+                logits = masked_model([x_batch, m], training=False)
+                losses = loss_fn(y_t, logits).numpy()
+                y_np = y_t.numpy().reshape(-1)
+                for cls in np.unique(y_np):
+                    idx = np.where(y_np == cls)[0]
+                    if idx.size:
+                        delta[int(cls)][c] += abs(float(losses[idx].mean()) - float(base_loss[idx].mean()))
+                        counts[int(cls)][c] += 1
+        class_scores = [arr / np.maximum(counts[cls], 1.0) for cls, arr in delta.items()]
+        if not class_scores:
+            return None
+        return np.mean(np.stack(class_scores, axis=0), axis=0)
+
+    def _attenuate_redundant_scores(
+        self,
+        layer: Any,
+        scores: np.ndarray,
+        similarity_threshold: float,
+        attenuation_factor: float,
+    ) -> np.ndarray:
+        out = np.asarray(scores, dtype=np.float64).reshape(-1).copy()
+        sim = self.kernel_similarity_matrix(layer)
+        if sim is None or sim.shape[0] != out.size:
+            act, _ = self.collect_layer_outputs(layer, include_labels=False)
+            if act is not None:
+                x = self.channel_matrix(act)
+                sim = np.abs(np.corrcoef(x))
+                sim = np.nan_to_num(sim, nan=0.0, posinf=0.0, neginf=0.0)
+        if sim is None or sim.shape[0] != out.size:
+            return out
+        np.fill_diagonal(sim, 0.0)
+        for i in range(out.size):
+            for j in range(i + 1, out.size):
+                if sim[i, j] >= similarity_threshold:
+                    weaker = i if out[i] <= out[j] else j
+                    out[weaker] *= float(attenuation_factor)
+        return out
+
+    def kernel_similarity_matrix(self, layer: Any) -> Optional[np.ndarray]:
+        w = None
+        if self.framework == "torch" and hasattr(layer, "weight"):
+            w = layer.weight.data.cpu().numpy()
+            if w.ndim >= 2:
+                x = w.reshape(w.shape[0], -1)
+            else:
+                return None
+        elif hasattr(layer, "get_weights"):
+            ww = layer.get_weights()
+            if not ww:
+                return None
+            w = ww[0]
+            if w.ndim == 4:
+                x = np.moveaxis(w, -1, 0).reshape(w.shape[-1], -1)
+            elif w.ndim == 2:
+                x = w.T
+            else:
+                return None
+        else:
+            return None
+        x = np.asarray(x, dtype=np.float64)
+        x = x - x.mean(axis=1, keepdims=True)
+        x = x / (np.linalg.norm(x, axis=1, keepdims=True) + 1e-12)
+        sim = np.abs(x @ x.T)
+        return np.nan_to_num(sim, nan=0.0, posinf=0.0, neginf=0.0)
 
     def thinet_alpha(self, layer: Any) -> np.ndarray:
         pr = self._prunable_layers()
@@ -621,9 +846,78 @@ class CustomMethodTools:
         anorm = np.abs(alpha) / (np.max(np.abs(alpha)) + 1e-12)
         return np.asarray(corr * anorm, dtype=np.float64)
 
+    def thinet_next_layer_damage_scores(self, layer: Any) -> np.ndarray:
+        """ThiNet-style next-layer reconstruction damage proxy.
+
+        Scores the current layer's channels by the mean squared contribution
+        they make to the next prunable layer output. This is the per-channel
+        marginal form of the next-layer reconstruction objective.
+        """
+        pr = self._prunable_layers()
+        idx = -1
+        for i, (_n, l) in enumerate(pr):
+            if l is layer:
+                idx = i
+                break
+        if idx < 0 or idx + 1 >= len(pr):
+            return np.asarray(self.weight_l2(layer, mode="sum"), dtype=np.float64).reshape(-1)
+        _, next_layer = pr[idx + 1]
+        act, _ = self.collect_layer_outputs(layer, include_labels=False)
+        if act is None:
+            return np.asarray(self.weight_l2(layer, mode="sum"), dtype=np.float64).reshape(-1)
+        nc = np.asarray(self.pooled_nc(act), dtype=np.float64)
+        if nc.ndim != 2 or nc.shape[1] == 0:
+            return np.asarray(self.weight_l2(layer, mode="sum"), dtype=np.float64).reshape(-1)
+        alpha = self.thinet_alpha(layer).reshape(-1)
+        if alpha.size != nc.shape[1]:
+            alpha = np.resize(alpha, nc.shape[1])
+        contrib = nc * alpha.reshape(1, -1)
+        return np.mean(np.square(contrib), axis=0)
+
     def reprune_representative_scores(self, act: np.ndarray) -> np.ndarray:
         x = self.channel_matrix(act)
-        x = np.asarray(x, dtype=np.float64)
+        return self.reprune_kernel_coverage_scores_from_matrix(x)
+
+    def reprune_kernel_coverage_scores(self, layer: Any, target_keep_ratio: float = 0.7) -> Optional[np.ndarray]:
+        sim = self.kernel_similarity_matrix(layer)
+        if sim is None:
+            return None
+        c = sim.shape[0]
+        if c <= 1:
+            return np.ones((c,), dtype=np.float64)
+        target_clusters = max(1, int(round(c * float(target_keep_ratio))))
+        dist = 1.0 - sim
+        np.fill_diagonal(dist, np.inf)
+        threshold = float(np.partition(dist.reshape(-1), min(dist.size - 1, c * max(c - target_clusters, 1)))[min(dist.size - 1, c * max(c - target_clusters, 1))])
+        parent = list(range(c))
+
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+
+        def union(a, b):
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+
+        for i in range(c):
+            for j in range(i + 1, c):
+                if dist[i, j] <= threshold:
+                    union(i, j)
+        clusters: Dict[int, List[int]] = defaultdict(list)
+        for i in range(c):
+            clusters[find(i)].append(i)
+        scores = np.zeros((c,), dtype=np.float64)
+        for members in clusters.values():
+            sub = sim[np.ix_(members, members)]
+            rep = members[int(np.argmax(np.mean(sub, axis=1)))]
+            scores[rep] += float(len(members))
+        return scores + 1e-6
+
+    def reprune_kernel_coverage_scores_from_matrix(self, ch_by_feat: np.ndarray) -> np.ndarray:
+        x = np.asarray(ch_by_feat, dtype=np.float64)
         c = x.shape[0]
         if c <= 1:
             return np.ones((c,), dtype=np.float64)

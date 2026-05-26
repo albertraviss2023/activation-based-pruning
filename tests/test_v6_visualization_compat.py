@@ -12,7 +12,7 @@ from tests.notebook_utils import load_notebook_namespace
 
 def _load_v6():
     return load_notebook_namespace(
-        "generalized_pruning_v6_final.ipynb",
+        "Legacy/generalized_pruning_v6_final.ipynb",
         "# =========================================\n# 5. EXECUTION",
     )
 

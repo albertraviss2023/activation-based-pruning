@@ -1,15 +1,23 @@
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from .registry import register_method
 
-# NOTE:
-# The package-level bundled criteria are intentionally minimal:
-#   - l1_norm
-# Activation-based bundled methods (apoz, mean_abs_act) are implemented in backend adapters.
-# Additional methods should be added via custom registration in experiment notebooks.
+@register_method("apoz", supported_scopes=["local"])
+def apoz_score(adapter: Any, model: Any, loader: Any, **kwargs) -> Dict[str, np.ndarray]:
+    """Average Percentage of Zeros (APoZ). Typically used for local pruning."""
+    if hasattr(adapter, "_collect_bundled_activation_scores"):
+        return adapter._collect_bundled_activation_scores(model, loader, "apoz")
+    return {}
 
-@register_method("l1_norm")
-@register_method("l1")
+@register_method("mean_abs_act", supported_scopes=["local"])
+def mean_abs_act_score(adapter: Any, model: Any, loader: Any, **kwargs) -> Dict[str, np.ndarray]:
+    """Mean Absolute Activation. Typically used for local pruning."""
+    if hasattr(adapter, "_collect_bundled_activation_scores"):
+        return adapter._collect_bundled_activation_scores(model, loader, "mean_abs_act")
+    return {}
+
+@register_method("l1_norm", supported_scopes=["local", "global"])
+@register_method("l1", supported_scopes=["local", "global"])
 def l1_norm_score(layer: Any, **kwargs) -> Optional[np.ndarray]:
     """Calculates the L1 norm of filters/channels.
 

@@ -15,7 +15,7 @@ from tests.notebook_utils import load_notebook_namespace
 
 def _load_v7():
     return load_notebook_namespace(
-        "generalized_pruning_v7_dual_framework.ipynb",
+        "Legacy/generalized_pruning_v7_dual_framework.ipynb",
         "# =========================================\n# 7. MAIN EXECUTION",
     )
 

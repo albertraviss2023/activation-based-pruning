@@ -20,6 +20,8 @@ dependencies = [
     "numpy",
     "matplotlib",
     "seaborn",
+    "plotly",
+    "networkx",
     "tqdm",
     # Frameworks are optional to avoid forcing both
     "thop",
@@ -29,6 +31,23 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "black", "isort"]
+torch = ["torch", "torchvision"]
+keras = ["tensorflow"]
+ui = [
+    "streamlit>=1.34",
+    "pandas>=2.0",
+    "torch",
+    "torchvision",
+    "pillow",
+]
+all = [
+    "torch",
+    "torchvision",
+    "tensorflow",
+    "streamlit>=1.34",
+    "pandas>=2.0",
+    "pillow",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

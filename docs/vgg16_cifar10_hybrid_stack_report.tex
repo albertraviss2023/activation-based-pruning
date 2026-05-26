@@ -1,0 +1,182 @@
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{hyperref}
+\newcommand{\stackname}[1]{\textbf{#1}}
+\newcommand{\figplaceholder}[1]{\fbox{\parbox[c][1.25in][c]{0.92\linewidth}{\centering #1}}}
+\title{Hybrid Stack Results for CIFAR-10 / VGG16}
+\author{ReduCNN pruning experiments}
+\date{}
+\begin{document}
+\maketitle
+
+\section*{Purpose}
+This report describes the actual method stacks selected by the hybrid pruning experiment.  The generic label used in some plots is avoided in the interpretation because it hides the scientific object of interest: the stack itself.  Each result below is therefore reported as a named stack, for example \stackname{S9-global-r0.3}, and compared with the singular methods used as baselines.
+
+\section*{Main conclusion}
+The most useful stack in this run is \stackname{S9-global-r0.3}, evaluated at pruning ratio $0.3$.  Across correlation thresholds $0.55$--$0.90$, this same nine-method stack preserves or improves accuracy relative to the baseline while requiring much less reported prune+heal time than any singular method.  The strongest setting is $r=0.3$, correlation threshold $0.90$: healed accuracy is $87.70\%$ ($+9.96$ percentage points versus baseline), FLOPs reduction is $24.81\%$, parameter reduction is $51.79\%$, and reported prune+heal time is $1.23$s.
+
+The main weakness is compression.  \stackname{S9-global-r0.3} is strong for accuracy and time, but it does not maximize FLOPs reduction.  Singular methods such as \texttt{custom\_tis} and local-scope stacks at higher pruning ratios compress more aggressively, but they lose substantial accuracy.  Therefore the useful claim is not that every stack dominates every individual method; the useful claim is that \stackname{S9-global-r0.3} gives the best accuracy--time trade-off with moderate compression.
+
+\section*{Timing caveat}
+The run summarized here was produced before the pruning implementation was changed to return full method cost.  The reported time columns should therefore be read as the run's recorded prune+heal time.  The implementation has now been corrected so future custom-method matrix runs save \texttt{score\_time\_sec}, \texttt{mask\_build\_time\_sec}, \texttt{surgery\_time\_sec}, and \texttt{method\_cost\_time\_sec}.  The final thesis timing table should be regenerated with that corrected instrumentation.
+
+\section*{Stack definitions}
+\begin{longtable}{p{0.18\linewidth}p{0.75\linewidth}}\toprule Stack label & Methods in stack \\ \midrule
+\stackname{S9-local-r0.3} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{mean\_abs\_act} \\
+\stackname{S11-local-r0.5} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_l2}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\stackname{S10-local-r0.5} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\stackname{S10-local-r0.6} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\stackname{S11-local-r0.6} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_l2}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\stackname{S9-global-r0.3} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{mean\_abs\_act} \\
+\stackname{S11-global-r0.5} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_l2}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\stackname{S10-global-r0.5} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\stackname{S10-global-r0.6} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\stackname{S11-global-r0.6} & \texttt{apoz}, \texttt{chip}, \texttt{custom\_class\_entropy}, \texttt{custom\_entropy}, \texttt{custom\_hrank}, \texttt{custom\_l2}, \texttt{custom\_nisp}, \texttt{custom\_reprune}, \texttt{custom\_tis}, \texttt{l1\_norm}, \texttt{mean\_abs\_act} \\
+\bottomrule\end{longtable}
+
+\section*{Condition-level results}
+Table~\ref{tab:conditions} reports the selected stack size and the model-level result for each tested condition.  Accuracy is reported only at model level after pruning and healing; layer-level outputs should be interpreted as agreement/compression diagnostics, not accuracy diagnostics.
+
+\begin{longtable}{llrrrrrrl}\caption{Stack outcomes by scope, pruning ratio, and correlation threshold.}\label{tab:conditions}\\ \toprule Scope & Stack & Corr. & Acc. $\Delta$ (pp) & FLOPs red. (\%) & Params red. (\%) & Time (s) & Size & Evidence \\ \midrule
+local & S9-local-r0.3 & 0.55 & -0.78 & 50.81 & 51.08 & 1.07 & 9 & matched \\
+local & S9-local-r0.3 & 0.60 & 0.98 & 50.81 & 51.08 & 0.92 & 9 & matched \\
+local & S9-local-r0.3 & 0.70 & 0.59 & 50.81 & 51.08 & 0.96 & 9 & matched \\
+local & S9-local-r0.3 & 0.80 & -0.39 & 50.81 & 51.08 & 0.95 & 9 & matched \\
+local & S9-local-r0.3 & 0.90 & 1.56 & 50.81 & 51.08 & 1.57 & 9 & matched \\
+local & S11-local-r0.5 & 0.55 & -28.71 & 74.86 & 74.98 & 1.28 & 11 & cross-ratio \\
+local & S11-local-r0.5 & 0.60 & -27.73 & 74.86 & 74.98 & 0.94 & 11 & cross-ratio \\
+local & S11-local-r0.5 & 0.70 & -23.63 & 74.86 & 74.98 & 0.97 & 11 & cross-ratio \\
+local & S11-local-r0.5 & 0.80 & -17.97 & 74.86 & 74.98 & 1.02 & 11 & cross-ratio \\
+local & S10-local-r0.5 & 0.90 & -21.88 & 74.86 & 74.98 & 0.90 & 10 & cross-ratio \\
+local & S10-local-r0.6 & 0.55 & -58.01 & 83.83 & 83.97 & 0.99 & 10 & cross-ratio \\
+local & S10-local-r0.6 & 0.60 & -56.84 & 83.83 & 83.97 & 1.32 & 10 & cross-ratio \\
+local & S10-local-r0.6 & 0.70 & -56.05 & 83.83 & 83.97 & 1.08 & 10 & cross-ratio \\
+local & S11-local-r0.6 & 0.80 & -48.05 & 83.83 & 83.97 & 0.92 & 11 & cross-ratio \\
+local & S10-local-r0.6 & 0.90 & -53.91 & 83.83 & 83.97 & 1.01 & 10 & cross-ratio \\
+global & S9-global-r0.3 & 0.55 & 9.18 & 24.81 & 51.79 & 1.15 & 9 & matched \\
+global & S9-global-r0.3 & 0.60 & 9.38 & 24.81 & 51.79 & 1.02 & 9 & matched \\
+global & S9-global-r0.3 & 0.70 & 8.79 & 24.81 & 51.79 & 1.10 & 9 & matched \\
+global & S9-global-r0.3 & 0.80 & 9.57 & 24.81 & 51.79 & 1.45 & 9 & matched \\
+global & S9-global-r0.3 & 0.90 & 9.96 & 24.81 & 51.79 & 1.23 & 9 & matched \\
+global & S11-global-r0.5 & 0.55 & 0.98 & 43.01 & 76.40 & 1.09 & 11 & cross-ratio \\
+global & S11-global-r0.5 & 0.60 & 0.98 & 43.01 & 76.40 & 0.92 & 11 & cross-ratio \\
+global & S11-global-r0.5 & 0.70 & -2.54 & 43.01 & 76.40 & 0.97 & 11 & cross-ratio \\
+global & S11-global-r0.5 & 0.80 & 0.20 & 43.08 & 76.39 & 1.21 & 11 & cross-ratio \\
+global & S10-global-r0.5 & 0.90 & 0.98 & 42.16 & 76.31 & 1.46 & 10 & cross-ratio \\
+global & S10-global-r0.6 & 0.55 & -43.95 & 51.01 & 84.97 & 1.05 & 10 & cross-ratio \\
+global & S10-global-r0.6 & 0.60 & -41.02 & 51.01 & 84.97 & 0.93 & 10 & cross-ratio \\
+global & S10-global-r0.6 & 0.70 & -37.70 & 51.23 & 84.94 & 1.06 & 10 & cross-ratio \\
+global & S11-global-r0.6 & 0.80 & -27.93 & 50.56 & 84.96 & 1.01 & 11 & cross-ratio \\
+global & S10-global-r0.6 & 0.90 & -37.30 & 50.19 & 84.96 & 1.08 & 10 & cross-ratio \\
+\bottomrule\end{longtable}
+
+\section*{Best global stack: S9-global-r0.3}
+The stack selected for all global $r=0.3$ thresholds is
+\begin{quote}
+\texttt{custom\_entropy + custom\_class\_entropy + custom\_hrank + mean\_abs\_act + chip + custom\_reprune + custom\_tis + custom\_nisp + apoz}.
+\end{quote}
+The stack is stable across correlation thresholds: the membership does not change from $0.55$ to $0.90$.  Increasing the threshold mainly changes the recovered accuracy after healing, not the stack membership.
+
+\begin{table}[H]\centering\caption{Global $r=0.3$ stack compared with strongest singular baselines.}\label{tab:global03}\begin{tabular}{rrrrrrrr}\toprule Corr. & Stack acc. $\Delta$ & Stack FLOPs & Stack params & Stack time & Best acc. method & Best FLOPs method & Fastest singular \\ \midrule
+0.55 & 9.18 & 24.81 & 51.79 & 1.15 & custom\_senpis (9.10) & custom\_tis (64.63) & custom\_spectral\_energy (7.41s) \\
+0.60 & 9.38 & 24.81 & 51.79 & 1.02 & custom\_senpis (9.10) & custom\_tis (64.63) & custom\_spectral\_energy (7.41s) \\
+0.70 & 8.79 & 24.81 & 51.79 & 1.10 & custom\_senpis (9.10) & custom\_tis (64.63) & custom\_spectral\_energy (7.41s) \\
+0.80 & 9.57 & 24.81 & 51.79 & 1.45 & custom\_senpis (9.10) & custom\_tis (64.63) & custom\_spectral\_energy (7.41s) \\
+0.90 & 9.96 & 24.81 & 51.79 & 1.23 & custom\_senpis (9.10) & custom\_tis (64.63) & custom\_spectral\_energy (7.41s) \\
+\bottomrule\end{tabular}\end{table}
+
+\section*{Specific comparison at the best threshold}
+At $r=0.3$ and correlation threshold $0.90$, \stackname{S9-global-r0.3} gives the clearest result.  It has better accuracy gain than all listed singular methods in the comparison table, while being much faster in the recorded prune+heal time.  It does not beat \texttt{custom\_tis} on FLOPs reduction, and it is slightly below \texttt{custom\_senpis} on parameter reduction.  This is therefore an accuracy--time stack, not the maximum-compression stack.
+
+\begin{table}[H]\centering\caption{\stackname{S9-global-r0.3} at correlation threshold $0.90$ versus singular methods.}\label{tab:singular}\begin{tabular}{lrrrr}\toprule Method/stack & Acc. $\Delta$ (pp) & FLOPs red. (\%) & Params red. (\%) & Time (s) \\ \midrule
+S9-global-r0.3 stack & 9.96 & 24.81 & 51.79 & 1.23 \\
+custom\_nisp & 7.95 & 23.61 & 53.53 & 7.65 \\
+custom\_senpis & 9.10 & 26.91 & 56.24 & 7.73 \\
+custom\_tis & -0.10 & 64.63 & 54.79 & 7.86 \\
+chip & 8.75 & 15.24 & 44.47 & 7.97 \\
+custom\_reprune & 8.85 & 9.07 & 32.96 & 8.97 \\
+custom\_spectral\_energy & -2.20 & 50.81 & 51.08 & 7.41 \\
+l1\_norm & 5.50 & 50.81 & 51.08 & 7.83 \\
+custom\_l2 & 5.25 & 50.81 & 51.08 & 7.97 \\
+apoz & 4.80 & 50.81 & 51.08 & 8.01 \\
+mean\_abs\_act & -3.40 & 50.81 & 51.08 & 8.48 \\
+\bottomrule\end{tabular}\end{table}
+
+\section*{Stacks that did not work}
+The local stacks and the higher-pruning global stacks are useful negative evidence.  Local $r=0.3$ gives strong compression ($50.81\%$ FLOPs reduction) and very low time, but accuracy recovery is weak: the best local $r=0.3$ setting reaches only $+1.56$ pp over baseline.  At $r=0.5$ and $r=0.6$, local stacks compress heavily ($74.86\%$ and $83.83\%$ FLOPs reduction), but accuracy collapses.  The same pattern appears in global $r=0.6$: around $50$--$51\%$ FLOPs reduction, but a large negative healed accuracy change.  These settings should be reported as over-pruning rather than successful hybrid stacks.
+
+\section*{Layer agreement diagnostics}
+The layer agreement plots explain why the stack is large.  Several method pairs agree strongly across layers: \texttt{l1\_norm} and \texttt{custom\_l2} pass the agreement test in all layers at global $r=0.3$, threshold $0.8$; \texttt{mean\_abs\_act} and \texttt{custom\_spectral\_energy} also pass in all layers; \texttt{custom\_hrank} and \texttt{custom\_reprune} pass in about $73\%$ of layers.  Other pairs have moderate rank correlation but insufficient prune-set overlap, so they are retained as complementary rather than collapsed into one proxy.
+
+\section*{Figures}
+The figures below should be regenerated with clearer titles that name the stack, for example ``S9-global-r0.3 vs singular methods''.  Existing plot files are included where available; otherwise, use the placeholder during drafting.
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_vs_methods_global_r0.3_c0.9_healed_accuracy_delta_pct.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_vs_methods_global_r0.3_c0.9_healed_accuracy_delta_pct.png}}{\figplaceholder{Plot placeholder: S9-global-r0.3, threshold 0.90: accuracy change versus singular methods.}}
+\caption{S9-global-r0.3, threshold 0.90: accuracy change versus singular methods.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_vs_methods_global_r0.3_c0.9_healed_flops_reduction_pct.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_vs_methods_global_r0.3_c0.9_healed_flops_reduction_pct.png}}{\figplaceholder{Plot placeholder: S9-global-r0.3, threshold 0.90: FLOPs reduction versus singular methods.}}
+\caption{S9-global-r0.3, threshold 0.90: FLOPs reduction versus singular methods.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_vs_methods_global_r0.3_c0.9_simplicity_time_sec.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_vs_methods_global_r0.3_c0.9_simplicity_time_sec.png}}{\figplaceholder{Plot placeholder: S9-global-r0.3, threshold 0.90: recorded prune+heal time versus singular methods.}}
+\caption{S9-global-r0.3, threshold 0.90: recorded prune+heal time versus singular methods.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_global_healed_accuracy_delta_pct.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_global_healed_accuracy_delta_pct.png}}{\figplaceholder{Plot placeholder: Global stack sensitivity: healed accuracy change.}}
+\caption{Global stack sensitivity: healed accuracy change.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_local_healed_accuracy_delta_pct.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_local_healed_accuracy_delta_pct.png}}{\figplaceholder{Plot placeholder: Local stack sensitivity: healed accuracy change.}}
+\caption{Local stack sensitivity: healed accuracy change.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_global_healed_flops_reduction_pct.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_global_healed_flops_reduction_pct.png}}{\figplaceholder{Plot placeholder: Global stack sensitivity: FLOPs reduction.}}
+\caption{Global stack sensitivity: FLOPs reduction.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_local_healed_flops_reduction_pct.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/hybrid_sensitivity_local_healed_flops_reduction_pct.png}}{\figplaceholder{Plot placeholder: Local stack sensitivity: FLOPs reduction.}}
+\caption{Local stack sensitivity: FLOPs reduction.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/layer_pair_abs_spearman_rank_corr_global_r0.3_c0.8.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/layer_pair_abs_spearman_rank_corr_global_r0.3_c0.8.png}}{\figplaceholder{Plot placeholder: Layer-wise absolute rank correlation for global r=0.3, threshold 0.8.}}
+\caption{Layer-wise absolute rank correlation for global r=0.3, threshold 0.8.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/layer_pair_prune_set_overlap_global_r0.3_c0.8.png}{\includegraphics[width=0.95\linewidth]{../outputs/adaptive_hybrid/cifar10/vgg16/20260428_192556/report_visuals/layer_pair_prune_set_overlap_global_r0.3_c0.8.png}}{\figplaceholder{Plot placeholder: Layer-wise prune-set overlap for global r=0.3, threshold 0.8.}}
+\caption{Layer-wise prune-set overlap for global r=0.3, threshold 0.8.}
+\end{figure}
+
+
+\section*{Recommended wording for the thesis}
+A precise statement supported by this run is:
+\begin{quote}
+For CIFAR-10/VGG16 at pruning ratio $0.3$, the nine-method global stack \stackname{S9-global-r0.3} improved healed accuracy by up to $9.96$ percentage points over the baseline while reducing FLOPs by $24.81\%$ and parameters by $51.79\%$.  Compared with singular methods, the stack achieved the best accuracy gain in the reported comparison and substantially lower recorded prune+heal time, but it did not maximize FLOPs reduction.  More aggressive local and global stacks produced larger FLOPs reductions but damaged accuracy, especially at pruning ratio $0.6$.
+\end{quote}
+\end{document}

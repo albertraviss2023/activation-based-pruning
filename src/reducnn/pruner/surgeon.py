@@ -44,6 +44,7 @@ class ReduCNNPruner:
         self.method = method.lower().strip()
         self.scope = scope.lower().strip()
         self.config = config or {}
+        self.last_timing: Dict[str, float] = {}
 
     @framework_dispatch
     @timer
@@ -57,14 +58,26 @@ class ReduCNNPruner:
         """
         Performs structural surgery on the model to reduce its size and complexity.
         """
+        pipeline_start_time = time.time()
+        self.last_timing = {}
+
         # PHASE 0: TOPOLOGY ANALYSIS
         print(f"🌐 Analyzing model topology...")
+        topology_start_time = time.time()
         classifier = ArchitectureClassifier(adapter)
         clusters = classifier.get_clusters(model)
         topo_type = classifier.get_topology_type(model)
+        topology_time = time.time() - topology_start_time
         print(f"✅ Detected {topo_type} architecture with {len(clusters)} pruning clusters.")
 
         # PHASE 1: SCORE CALCULATION
+        self.config["ratio"] = ratio
+        self.config["current_prune_ratio"] = ratio
+        if adapter is not None and hasattr(adapter, "config") and isinstance(adapter.config, dict):
+            adapter.config.setdefault("ratio", ratio)
+            adapter.config["current_prune_ratio"] = ratio
+
+        score_start_time = time.time()
         if self.method in ('hybrid', 'meta'):
             print(f"🧠 Executing Hybrid Meta-Pruning Engine (Literature-Grounded)...")
             from .meta_criteria import HybridMetaPruner
@@ -73,16 +86,19 @@ class ReduCNNPruner:
         else:
             print(f"🔍 Analyzing model using '{self.method}' method...")
             score_map = adapter.get_score_map(model, loader, self.method)
+        score_time = time.time() - score_start_time
 
         # PHASE 2: MASK BUILDING
         print(f"🏗️ Building masks (scope: {self.scope}, ratio: {ratio})...")
+        mask_start_time = time.time()
         masks = build_pruning_masks(score_map, ratio, scope=self.scope, clusters=clusters)
+        mask_build_time = time.time() - mask_start_time
 
         # PHASE 3: PHYSICAL SURGERY
         print(f"✂️ Applying physical surgery...")
-        start_time = time.time()
+        surgery_start_time = time.time()
         pruned_model = adapter.apply_surgery(model, masks)
-        duration = time.time() - start_time
+        surgery_time = time.time() - surgery_start_time
 
         if save_pruned_path:
             out = Path(str(save_pruned_path))
@@ -90,7 +106,18 @@ class ReduCNNPruner:
             adapter.save_checkpoint(pruned_model, save_pruned_path)
             print(f"💾 Saved pruned checkpoint to: {out}")
 
-        return pruned_model, masks, duration
+        pipeline_time = time.time() - pipeline_start_time
+        method_cost_time = score_time + mask_build_time + surgery_time
+        self.last_timing = {
+            "topology_time_sec": float(topology_time),
+            "score_time_sec": float(score_time),
+            "mask_build_time_sec": float(mask_build_time),
+            "surgery_time_sec": float(surgery_time),
+            "method_cost_time_sec": float(method_cost_time),
+            "prune_pipeline_time_sec": float(pipeline_time),
+        }
+
+        return pruned_model, masks, method_cost_time
 
     @framework_dispatch
     def prune_custom_model(self, model: Any, loader: Any, ratio: float = 0.5,
