@@ -34,6 +34,45 @@ wheels/
 # Data
 data/
 
+# Local datasets, model artifacts, and experiment outputs
+outputs/
+exports/
+saved_models/
+checkpoints/
+my_models/
+Legacy/
+report_artifacts/
+reports/
+thesis/
+custom_methods/
+*.pth
+*.pt
+*.onnx
+*.weights.h5
+*.h5
+*.npz
+*.npy
+*.jsonl
+
+# Local credentials
+kaggle.json
+.env
+.env.*
+
+# Rendered presentation / analysis artifacts
+presentations/
+*.html
+*.png
+*.gif
+*.pptx
+*.pdf
+
+# Duplicate local sync copies
+* (1).py
+* (1).md
+* (1).toml
+* (1).ipynb
+
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -42,6 +81,7 @@ data/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
 # Temporary drive folders
 .tmp.driveupload/

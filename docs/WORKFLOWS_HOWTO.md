@@ -36,12 +36,17 @@ Use these as the default mental model across notebooks:
 
 ## 2. Workflow A: Register Custom Math and Use It on Pretrained Models
 
-### 2.1 Notebook to run
+ReduCNN's method registry is intentionally open. Bundled methods are defaults;
+researchers can register any scoring function that returns one score per output
+channel/filter.
+
+### 2.1 Notebook or module to run
 
 - `experiments_custom_method_registration_minimal RESNET_18.ipynb`
 - `experiments_custom_method_registration_minimal_vgg16.ipynb`
 - `experiments_custom_method_registration_minimal densenet121.ipynb`
 - `experiments_custom_method_registration_minimal mobilenet_v2.ipynb`
+- or a Python module under `custom_methods/` for use in ReduCNN Studio
 
 Choose the one matching your target model.
 
@@ -66,6 +71,17 @@ def chip_score(layer, **kwargs):
         return None
     return np.asarray(tools.chip_scores(A, max_spatial=kwargs.get('chip_max_spatial', None)), dtype=np.float64).reshape(-1)
 ```
+
+You can inspect what is currently registered:
+
+```python
+from reducnn.pruner import list_methods, list_method_names
+
+print(list_methods("torch"))
+print(list_method_names("keras"))
+```
+
+For a full guide, see `docs/CUSTOM_METHODS.md`.
 
 ### 2.3 What this workflow validates
 
@@ -159,7 +175,25 @@ This avoids re-running experiments just to rebuild tables.
 
 These are written under `outputs/<run_id>/...` with latest mirrors for quick presentation access.
 
-## 6. Recommended Run Discipline
+## 6. Workflow E: Objective LFPC Hybrid Experiments
+
+The LFPC objective notebooks discover and benchmark layerwise hybrid pruning
+stacks under specific optimization objectives such as FLOPs plus accuracy, time
+plus accuracy, and the joint FLOPs, time, and accuracy setting.
+
+Use `docs/OBJECTIVE_LFPC_EXPERIMENTS.md` as the contract for these notebooks. In
+particular, every reported comparison must preserve the exact context:
+
+```text
+objective x dataset x model x scope x pruning ratio
+```
+
+These notebooks should export metadata, layerwise policies, hybrid stack
+benchmarks, singular method benchmarks, checkpoint paths, and audit files so the
+analysis notebooks can rebuild thesis figures without guessing which run
+produced which artifact.
+
+## 7. Recommended Run Discipline
 
 1. Set a unique `RUN_ID` per experiment run.
 2. Keep one backend/model/method combination per run when reporting results.
@@ -167,7 +201,7 @@ These are written under `outputs/<run_id>/...` with latest mirrors for quick pre
 4. Use the final CSV export cell before ending the session.
 5. Commit notebooks and generated tables/plots metadata needed for reproducibility.
 
-## 7. Quick Troubleshooting
+## 8. Quick Troubleshooting
 
 1. Method not found:
 Verify the registration cell executed before pruning, and verify each decorator has the correct framework (`framework='torch'` or `framework='keras'`).
@@ -180,3 +214,7 @@ Confirm backend/model/dataset folder alignment in `saved_models/baselines/...`.
 
 4. Slow runs:
 Use a faster model first (`resnet18`) for pipeline validation, then run heavier models.
+
+5. UI custom method does not appear:
+Put the method in `custom_methods/*.py`, make sure it uses `@register_method`,
+and check the custom module status table in ReduCNN Studio.

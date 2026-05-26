@@ -1,10 +1,21 @@
-# ReduCNN ✂️ (v0.88.0)
+# ReduCNN
 
-A professional, modular, dual-framework Python package for **Activation-Based Structural Pruning**. This package allows you to physically remove filters and channels from PyTorch and Keras models, reducing compute cost (FLOPs) and memory footprint while maintaining behavioral consistency.
+ReduCNN is a dual-framework research package for activation-based structural
+pruning of convolutional neural networks. It supports PyTorch and Keras models,
+lets researchers register their own pruning mathematics, and performs physical
+channel/filter removal so the pruned model is actually smaller.
 
-## Installation
+The core idea is simple:
 
-To install the package in editable mode (perfect for research and development):
+1. Build or load a CNN.
+2. Score each channel/filter with a pruning method.
+3. Build keep masks from the scores.
+4. Apply structural surgery.
+5. Fine-tune and compare accuracy, parameters, and FLOPs.
+
+## Install
+
+For local research:
 
 ```bash
 git clone https://github.com/albertraviss2023/activation-based-pruning.git
@@ -12,207 +23,313 @@ cd activation-based-pruning
 pip install -e .
 ```
 
----
+Install the framework you want to use:
 
-## Workflow Documentation
-
-For professional end-to-end usage guides (GitHub + VS Code + Colab), see:
-
-- [Workflows How-To (v0.88)](docs/WORKFLOWS_HOWTO.md)
-
-This includes:
-- Registering custom method math and running on pretrained models.
-- Loading pretrained baselines, pruning, healing, visualizing, and saving outputs.
-- Training new baselines, then pruning/healing with full reporting.
-- Visualization deep-dive workflow with artifact persistence.
-
----
-
-## Sequential Decoupled Workflow
-
-Unlike a monolithic script, `reducnn` is designed as a suite of independent tools. Here is how to use them sequentially:
-
-### Step 1: Environment & Storage Setup (`sp.CloudStorage`)
-**Why:** Researchers often switch between local VS Code and Google Colab. This module ensures your model paths remain consistent without changing code.
-
-```python
-import reducnn as sp
-
-# project_name maps to a folder in your Google Drive 'MyDrive'
-storage = sp.CloudStorage(project_name="MyPruningResearch")
-storage.mount_drive() # Only executes if in Colab
-
-# Automatically resolves to local folder OR /content/drive/MyDrive/...
-checkpoint_dir = storage.resolve_path("checkpoints/v1")
+```bash
+pip install -e ".[torch]"
 ```
 
-### Step 2: Preparing the Model (`sp.backends`)
-**Why:** You need a unified way to load or build models regardless of whether you use PyTorch or Keras.
+or:
 
-```python
-from reducnn.backends import get_adapter
-
-# 1. Provide your model object
-my_model = ... 
-
-# 2. Get the appropriate adapter (detects Torch vs Keras automatically)
-adapter = get_adapter(my_model)
-
-# 3. Load pre-trained weights (Unified syntax)
-adapter.load_checkpoint(my_model, checkpoint_dir / "weights.pth")
+```bash
+pip install -e ".[keras]"
 ```
 
-You can also copy checkpoints between Colab Drive and repo workspace:
+For development tools:
 
-```python
-storage.copy_into_project(
-    "/content/drive/MyDrive/activation-based-pruning/my_models/resnet18_pretrained.pth",
-    "my_models/resnet18_pretrained.pth",
-)
+```bash
+pip install -e ".[dev]"
 ```
 
-### Step 3: Diagnostic Research (`sp.analyzer.MethodValidator`)
-**Why:** Before pruning, you may want to see if 'taylor' scores correlate with 'l1_norm' or 'apoz' for your specific architecture.
+For the Dockerized UI dependencies outside Docker:
 
-```python
-from reducnn.analyzer import MethodValidator
-
-validator = MethodValidator()
-validator.compare_methods(
-    model=my_model, 
-    loader=my_dataloader, 
-    methods=['l1_norm', 'mean_abs_act', 'apoz'],
-    ratio=0.3
-)
-# This generates diagnostic heatmaps and rank-correlation plots.
+```bash
+pip install -e ".[ui]"
 ```
 
-### Step 4: Executing the Pruning (`sp.pruner.ReduCNNPruner`)
-**Why:** This is the core engine. It calculates importance and performs "surgery" to return a physically smaller model.
+For Colab GPU use, install the same UI extras inside the Colab runtime:
 
 ```python
+!pip install -q -e ".[ui]"
+```
+
+## Quick Start: PyTorch
+
+```python
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+
+from reducnn.backends.torch_backend import PyTorchAdapter
 from reducnn.pruner import ReduCNNPruner
 
-surgeon = ReduCNNPruner(method='apoz', scope='local')
+transform = transforms.Compose([transforms.ToTensor()])
+train = datasets.CIFAR10(root="data", train=True, download=True, transform=transform)
+loader = DataLoader(train, batch_size=32, shuffle=True)
 
-# Returns a new physically smaller model, masks, and surgery duration (seconds)
-pruned_model, masks, duration = surgeon.prune(
-    my_model,
-    my_dataloader,
-    ratio=0.4,
-    save_pruned_path="exports/pruned_model.pth",  # Optional
-)
+config = {
+    "backend": "pytorch",
+    "dataset": "cifar10",
+    "model_type": "resnet18",
+    "input_shape": (3, 32, 32),
+    "num_classes": 10,
+    "prune_batches": 8,
+}
+
+adapter = PyTorchAdapter(config)
+model = adapter.get_model("resnet18", input_shape=(3, 32, 32), num_classes=10)
+
+pruner = ReduCNNPruner(method="apoz", scope="local", config=config)
+pruned_model, masks, duration = pruner.prune(model, loader, ratio=0.3, adapter=adapter)
+
+before = adapter.get_stats(model, loader)
+after = adapter.get_stats(pruned_model, loader)
+
+print("Original params:", before[1])
+print("Pruned params:", after[1])
 ```
 
-For custom pre-trained models:
+## Quick Start: Keras
 
 ```python
-pruned_model, masks, duration = surgeon.prune_custom_model(
-    model=my_model,
-    loader=my_dataloader,
-    ratio=0.4,
-    checkpoint_path="my_models/pretrained_weights.pth",  # Optional load
-    save_pruned_path="exports/pruned_model.pth",         # Optional save
-)
+import tensorflow as tf
+
+from reducnn.backends.keras_backend import KerasAdapter
+from reducnn.pruner import ReduCNNPruner
+
+(x_train, y_train), _ = tf.keras.datasets.cifar10.load_data()
+x_train = x_train.astype("float32") / 255.0
+y_train = y_train.reshape(-1)
+loader = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(32)
+
+config = {
+    "backend": "keras",
+    "dataset": "cifar10",
+    "model_type": "vgg16",
+    "input_shape": (32, 32, 3),
+    "num_classes": 10,
+    "prune_batches": 8,
+}
+
+adapter = KerasAdapter(config)
+model = adapter.get_model("vgg16", input_shape=(32, 32, 3), num_classes=10)
+
+pruner = ReduCNNPruner(method="l1_norm", scope="local", config=config)
+pruned_model, masks, duration = pruner.prune(model, loader, ratio=0.2, adapter=adapter)
 ```
 
-### Step 5: Efficiency Trade-off Analysis (`sp.analyzer.ParetoAnalyzer`)
-**Why:** Stakeholders need to know the "ROI"—how much accuracy is lost for every 10% of FLOPs reduced.
+## Register Custom Pruning Math
+
+ReduCNN is designed so researchers are not limited to bundled methods. Any
+function can become a pruning method if it returns a one-dimensional score array
+for a layer. Higher scores mean "more important, keep this channel."
 
 ```python
-from reducnn.analyzer import ParetoAnalyzer
+import numpy as np
+from reducnn.pruner import register_method
 
-pareto = ParetoAnalyzer(method='apoz')
-pareto.run(my_model, my_dataloader, ratios=[0.2, 0.4, 0.6, 0.8])
-# Generates the Pareto Frontier curves (Accuracy vs Compute).
+@register_method("my_activation_energy", framework="global")
+def my_activation_energy(layer, tools=None, **kwargs):
+    act, _ = tools.collect_layer_outputs(layer, include_labels=False)
+    if act is None:
+        return tools.weight_l2(layer)
+    channel_matrix = tools.channel_matrix(act)
+    return np.mean(np.square(channel_matrix), axis=1)
 ```
 
-### Step 6: Presentation Visuals (`sp.visualization`)
-**Why:** To prove the pruning was "surgical" and didn't break model internal representations.
+Then use it like any built-in method:
 
 ```python
-import reducnn.visualization as viz
-
-# 1. Bar chart of layer-wise sensitivity
-viz.plot_layer_sensitivity(masks, title_prefix="VGG16")
-
-# 2. Compare Params and FLOPs
-b_stats = adapter.get_stats(my_model)
-p_stats = adapter.get_stats(pruned_model)
-viz.plot_metrics_comparison(b_stats, p_stats)
+pruner = ReduCNNPruner(method="my_activation_energy", scope="global")
+pruned_model, masks, duration = pruner.prune(model, loader, ratio=0.3, adapter=adapter)
 ```
 
----
+You can inspect what is registered:
 
-## High-Level Orchestration (`sp.engine.Orchestrator`)
+```python
+from reducnn.pruner import list_method_names
 
-If you prefer a single command to run the full "Train -> Prune -> Fine-tune" pipeline, use the Orchestrator:
+print(list_method_names("torch"))
+```
+
+Framework values:
+- `global`: method can be used by both backends.
+- `torch`: PyTorch-specific method.
+- `keras`: Keras-specific method.
+
+Useful arguments that may be passed to custom methods:
+- `layer`
+- `layer_name`
+- `model`
+- `loader`
+- `device`
+- `tools`
+- `prunables`
+- any values from your config dictionary
+
+The `tools` object provides helpers for activation collection, channel matrix
+conversion, weight norms, CHIP-style scores, class-wise Taylor matrices, and
+other reusable scoring utilities.
+
+## Dockerized UI
+
+ReduCNN Studio is a Streamlit app for configuring pruning runs through a clean
+interface. It supports:
+
+- model selection
+- dataset selection: Cat vs Dog, CIFAR-10, CIFAR-100
+- pruning method selection from the live ReduCNN registry
+- custom method loading from `custom_methods/`
+- baseline selection: load latest, train new, load checkpoint, or use model initialization
+- checkpoint saving for baseline, raw pruned, and fine-tuned models
+- layer sensitivity plots and CSV tables saved to disk
+- smoke-mode synthetic runs
+- checkpoint and summary artifact creation
+
+The app reports the active runtime at the top of the page. For GPU pruning, it
+should show `Runtime: CUDA GPU`.
+
+Start it with:
+
+```bash
+docker compose up --build reducnn-ui
+```
+
+Open:
+
+```text
+http://localhost:8501
+```
+
+UI artifacts are written to `outputs/ui_runs/` by default. The Docker Compose
+configuration mounts `data/`, `outputs/`, `saved_models/`, and `custom_methods/`
+so files created in the container are visible in the repo workspace.
+
+Custom methods for the UI:
+
+1. Add a `.py` file under `custom_methods/`.
+2. Register methods with `@register_method(...)`.
+3. Optionally add `METHOD_METADATA` for a nicer UI label.
+4. Restart or refresh the app.
+
+Example:
+
+```python
+from reducnn.pruner import register_method
+
+METHOD_METADATA = {
+    "my_energy_score": {
+        "label": "My Energy Score",
+        "description": "Ranks channels by RMS weight energy.",
+    }
+}
+
+@register_method("my_energy_score", framework="global")
+def my_energy_score(layer, tools=None, **kwargs):
+    return tools.weight_l2(layer, mode="rms")
+```
+
+### Running the UI on Colab GPU
+
+To use a Colab GPU from the UI, run Streamlit inside the Colab runtime and open
+it through a tunnel. A local Docker container cannot borrow the Colab GPU.
+
+Quick Colab shape:
+
+```python
+!git clone https://github.com/albertraviss2023/activation-based-pruning.git
+%cd activation-based-pruning
+!pip install -q -e ".[ui]"
+!streamlit run ui/app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true > /content/reducnn_streamlit.log 2>&1 &
+```
+
+Then expose it:
+
+```python
+!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /content/cloudflared
+!chmod +x /content/cloudflared
+!/content/cloudflared tunnel --url http://localhost:8501
+```
+
+Open the printed `trycloudflare.com` URL and confirm that the UI says
+`Runtime: CUDA GPU`. Full steps are in
+[Running ReduCNN Studio on Google Colab](docs/COLAB_UI.md).
+
+## High-Level Orchestration
+
+Use `Orchestrator` when you want a train, prune, fine-tune flow:
 
 ```python
 from reducnn.engine import Orchestrator
 
-config = {'backend': 'pytorch', 'model_type': 'vgg16', 'ratio': 0.4, 'method': 'apoz', 'epochs': 10}
-orch = Orchestrator(config)
-orch.run(train_loader, val_loader=val_loader)
+config = {
+    "backend": "pytorch",
+    "dataset": "cifar10",
+    "model_type": "resnet18",
+    "input_shape": (3, 32, 32),
+    "num_classes": 10,
+    "method": "apoz",
+    "scope": "local",
+    "ratio": 0.3,
+    "epochs": 5,
+    "ft_epochs": 3,
+}
+
+orchestrator = Orchestrator(config)
+pruned_model, masks = orchestrator.run(train_loader, val_loader=val_loader)
 ```
 
----
+## Outputs
 
-## Production Defaults (v0.88)
+Common output locations:
 
-ReduCNN now defaults to production-style behavior:
+- `saved_models/baselines/<backend>/<dataset>/<model>/`
+- `saved_models/pruned_raw/<backend>/<dataset>/<model>/<method>/`
+- `saved_models/fine_tuned/<backend>/<dataset>/<model>/<method>/`
+- `outputs/experiments/<dataset>/<model>/<run_id>/`
+- `outputs/ui_runs/`
 
-1. Baseline policy (`load-or-train`)
-- Baseline runs auto-load latest checkpoint when available.
-- If missing, baseline is trained and auto-saved.
-- Paths:
-  - `saved_models/baselines/pytorch/<dataset>/<model>/...`
-  - `saved_models/baselines/keras/<dataset>/<model>/...`
+These directories are ignored by git by default.
 
-2. Calibration policy
-- If no batch limit is provided, scoring uses full calibration loader length.
-- Optional overrides:
-  - `prune_batches`
-  - `calib_batches`
-  - `calibration_batches`
+## Repo Layout
 
-3. Artifact persistence
-- Set:
-  - `REDUCNN_ARTIFACT_DIR`
-  - `REDUCNN_ARTIFACT_MIRROR_DIR` (optional)
-  - `REDUCNN_RUN_ID` (optional)
-- Visualization outputs are auto-persisted for thesis/presentation workflows.
+```text
+src/reducnn/
+  analyzer/        method comparison, validation, Pareto analysis
+  backends/        PyTorch and Keras adapters
+  core/            shared adapter/storage/decorator utilities
+  engine/          high-level orchestration
+  pruner/          registry, scoring, masks, structural surgery
+  visualization/   reporting and diagnostic visualizations
 
----
-
-## Interactive Help & Documentation
-
-The package follows professional Python standards. You can access detailed instructions for any class or module directly in your terminal or notebook using `help()`:
-
-```python
-import reducnn.pruner as pruner
-
-# Show documentation for the ReduCNNPruner class
-help(pruner.ReduCNNPruner)
-
-# Show documentation for the Pruning Engine module
-help(pruner)
+custom_methods/    drop-in methods loaded by the UI
+ui/                Dockerized Streamlit app
+docs/              workflow and project documentation
+examples/          script-based examples
+tests/             regression and workflow tests
 ```
 
-## Advanced: Adding Custom Math
+## More Documentation
 
-You can register your own pruning criteria using the `@register_method` decorator:
+- [Documentation Index](docs/README.md)
+- [Workflow How-To](docs/WORKFLOWS_HOWTO.md)
+- [Custom Methods](docs/CUSTOM_METHODS.md)
+- [Method Math Notes](docs/METHOD_MATH.md)
+- [Adaptive Hybrid Method](docs/ADAPTIVE_HYBRID_METHOD.md)
+- [Objective LFPC Experiments](docs/OBJECTIVE_LFPC_EXPERIMENTS.md)
+- [Experiment Metadata Registry](docs/EXPERIMENT_METADATA_REGISTRY.md)
+- [Experiment Metrics Schema](docs/EXPERIMENT_METRICS_SCHEMA.md)
+- [UI and GPU Execution](docs/UI_GPU_GUIDE.md)
+- [Running ReduCNN Studio on Google Colab](docs/COLAB_UI.md)
+- [Repo Hygiene](docs/REPO_HYGIENE.md)
+- [Module Documentation](MODULE_DOCUMENTATION.md)
+- [Implementation Audit](docs/IMPLEMENTATION_AUDIT_v0.6.6.md)
+- [Literature Fidelity Report](docs/LITERATURE_FIDELITY_REPORT_v2.md)
 
-```python
-from reducnn.pruner import register_method
-import numpy as np
+## Development Checks
 
-@register_method("my_custom_math")
-def my_custom_score(layer, **kwargs):
-    # 'layer' is automatically passed by the adapter
-    weights = layer.get_weights()[0] # Keras example
-    return np.mean(np.abs(weights), axis=(0,1,2))
-
-# Now you can use it in the surgeon
-surgeon = ReduCNNPruner(method="my_custom_math")
+```bash
+python -m compileall src ui custom_methods
+pytest
 ```
+
+For a quick UI wiring check, use ReduCNN Studio with `Smoke mode` enabled.

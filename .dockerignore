@@ -1,0 +1,39 @@
+.git
+.pytest_cache
+__pycache__
+*.pyc
+.ipynb_checkpoints
+.tmp.driveupload
+.tmp.drivedownload
+
+data
+outputs
+exports
+saved_models
+checkpoints
+my_models
+Legacy
+report_artifacts
+reports
+thesis
+
+*.ipynb
+*.pth
+*.pt
+*.onnx
+*.weights.h5
+*.h5
+*.npz
+*.npy
+*.png
+*.gif
+*.html
+*.pptx
+*.pdf
+*.jsonl
+kaggle.json
+desktop.ini
+
+README (1).md
+pyproject (1).toml
+* (1).ipynb

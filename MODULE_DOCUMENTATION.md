@@ -1,141 +1,196 @@
-# Module Documentation: `reducnn` 📦
+# Module Documentation: `reducnn`
 
-This document provides a comprehensive breakdown of every module, class, and function within the `reducnn` package. It is designed for developers and researchers who need to understand the internal "plumbing" of the library.
+This document maps the public package structure for developers and thesis
+readers who need to understand how ReduCNN is organized. It is intentionally
+kept at module level; implementation details live in the source docstrings and
+workflow-specific documents under `docs/`.
 
----
+## Package Overview
 
-## 1. `reducnn.core`
-The foundational layer of the library, containing abstract interfaces, decorators, and infrastructure utilities.
+ReduCNN is split into six main areas:
+
+- `reducnn.core`: shared interfaces, decorators, storage helpers, and package
+  exceptions.
+- `reducnn.backends`: PyTorch and Keras adapters that implement model loading,
+  training, evaluation, statistics, and structural surgery.
+- `reducnn.pruner`: pruning method registration, scoring criteria, mask
+  building, and structural pruning orchestration.
+- `reducnn.analyzer`: validation and Pareto-style analysis utilities.
+- `reducnn.visualization`: plotting and visual reporting helpers.
+- `reducnn.engine`: high-level orchestration for train, prune, fine-tune, and
+  report workflows.
+
+## `reducnn.core`
 
 ### `adapter.py`
-- **Purpose:** Defines the `FrameworkAdapter` Abstract Base Class (ABC).
-- **Key Class:** `FrameworkAdapter`
-    - `get_model(model_type)`: Abstract method to initialize standard architectures.
-    - `train(...)`: Abstract method for model optimization.
-    - `evaluate(...)`: Abstract method for accuracy calculation.
-    - `get_score_map(...)`: Abstract method to calculate importance scores for every filter.
-    - `apply_surgery(...)`: The entry point for physical weight deletion.
-    - `load_checkpoint() / save_checkpoint()`: Unified weight I/O.
+
+Defines the `FrameworkAdapter` abstract base class. Backends implement this
+interface so the pruning engine can work with PyTorch or Keras without changing
+experiment code.
+
+Important responsibilities:
+
+- construct or load supported architectures;
+- train and evaluate models;
+- compute model statistics such as accuracy, parameters, and FLOPs;
+- collect method scores;
+- apply structural pruning surgery;
+- save and load checkpoints.
 
 ### `decorators.py`
-- **Purpose:** Enhances the developer experience and implements the "plug-and-play" backend logic.
-- **Key Functions:**
-    - `@framework_dispatch`: **The Core Innovation.** Automatically detects if a model is PyTorch or Keras and injects the correct adapter into the function.
-    - `@timer`: Measures performance overhead of pruning/training.
-    - `@logger`: Standardizes the visual logging of the pipeline phases.
-    - `get_framework_adapter()`: Logic for dynamic backend discovery based on Python object types.
+
+Provides utility decorators for backend dispatch, timing, and consistent
+pipeline logging.
 
 ### `storage.py`
-- **Purpose:** Standardizes model saving/loading between Local VS Code and Google Colab.
-- **Key Class:** `CloudStorage`
-    - `mount_drive()`: Handles Google Drive handshakes.
-    - `resolve_path(rel_path)`: Dynamically routes paths. Prevents "File Not Found" errors when moving from a laptop to a cloud GPU.
+
+Contains `CloudStorage`, a path helper for local and Google Colab workflows. It
+keeps notebook code portable when artifacts need to be saved locally or on
+Google Drive.
 
 ### `exceptions.py`
-- **Purpose:** Defines custom errors for the package.
-- **Exceptions:** `SurgeryError`, `UnsupportedFrameworkError`, `MethodRegistrationError`.
 
----
+Defines project-specific exceptions such as `SurgeryError`,
+`UnsupportedFrameworkError`, and `MethodRegistrationError`.
 
-## 2. `reducnn.backends`
-Contains the concrete implementations of the `FrameworkAdapter` for specific deep learning engines.
+## `reducnn.backends`
 
 ### `torch_backend.py`
-- **Purpose:** Implements the `PyTorchAdapter` and the logic for dynamic graph surgery.
-- **Key Class:** `TorchStructuralPruner`
-    - `_trace()`: Recursively walks the PyTorch module tree to find Conv-BN-Conv dependency chains.
-    - `_shrink()`: The function that actually deletes rows/columns from `nn.Parameter` tensors.
-- **Key Class:** `PyTorchAdapter`
-    - Handles Taylor pruning using `register_full_backward_hook`.
-    - Manages GPU/CPU device mapping automatically.
+
+Implements PyTorch support through `PyTorchAdapter` and the structural pruning
+logic needed for convolutional networks. The backend handles device placement,
+evaluation, training, activation collection, FLOPs estimation, and physical
+channel removal.
+
+For residual architectures such as ResNet, structural surgery must preserve
+shape compatibility across shortcut additions. The backend therefore tracks
+dependencies between convolution, batch normalization, downstream convolution,
+and residual branches.
 
 ### `keras_backend.py`
-- **Purpose:** Implements the `KerasAdapter` and the functional rebuilder for static graphs.
-- **Key Class:** `KerasAdapter`
-    - `_apply_structural_pruning()`: A recursive rebuilder that creates a brand new `Model` by copying and slicing weights from the original.
-    - `_estimate_flops()`: An analytical FLOPs counter that traverses the Keras layer list.
-    - Handles Taylor pruning using `tf.GradientTape`.
 
----
+Implements Keras/TensorFlow support through `KerasAdapter`. The backend supports
+model construction, evaluation, training, analytical statistics, activation
+collection, and graph-aware model rebuilding after structural pruning.
 
-## 3. `reducnn.pruner`
-The "Brain" of the library. It contains the mathematical heuristics and the logic for decision-making.
+### `factory.py`
+
+Provides backend adapter discovery and creation helpers.
+
+## `reducnn.pruner`
 
 ### `surgeon.py`
-- **Purpose:** Orchestrates the pruning action.
-- **Key Class:** `ReduCNNPruner`
-    - `prune(model, loader, ratio)`: Coordinates the 3-step process: (1) Score Calculation, (2) Mask Selection, (3) Structural Surgery.
+
+Defines `ReduCNNPruner`, the primary pruning entry point. It coordinates:
+
+1. method scoring;
+2. pruning-mask construction;
+3. structural surgery through the active backend adapter.
+
+The pruner supports local and global scopes, where local pruning selects
+channels independently per layer and global pruning ranks candidate channels
+across the eligible model region.
 
 ### `registry.py`
-- **Purpose:** A central hub for importance heuristics.
-- **Key Function:** `@register_method(name)`: A decorator that allows researchers to "drop in" new pruning math without editing the core library.
 
-### `criteria.py`
-- **Purpose:** Implements the built-in pruning algorithms (L1, L2, Taylor, Random).
-- **Key Function:** `taylor_score()`: Native implementation of gradient-based filter importance.
+Implements the custom pruning method registry.
+
+Public helpers:
+
+- `register_method(name, framework="global", supported_scopes=None)`;
+- `list_methods(framework=None, include_global=True)`;
+- `list_method_names(framework=None, include_global=True)`;
+- `get_method(name, framework)`;
+- `call_score_fn(method_name, framework, kwargs)`.
+
+The registry is intentionally open so experiment notebooks and files under
+`custom_methods/` can add new scoring methods without editing the core package.
+
+### `criteria.py`, `meta_criteria.py`, `chip.py`
+
+Contain bundled pruning scores and literature-inspired criteria. Examples
+include L1 norm, APoZ, mean activation, CHIP-style activation scoring, and
+custom or meta-criteria used by experiments.
+
+### `custom_method_tools.py`
+
+Provides reusable helper functions passed to registered methods, including
+activation collection, channel matrix conversion, weight norms, and other
+scoring utilities.
 
 ### `mask_builder.py`
-- **Purpose:** The logic for selecting which filters to keep based on the calculated scores.
-- **Key Function:** `build_pruning_masks()`: Implements both **Local** (layer-wise) and **Global** (network-wide) thresholding strategies.
 
----
+Builds boolean keep masks from score maps for local and global pruning. This is
+where pruning ratio, scope, and per-layer channel counts become concrete masks
+for structural surgery.
 
-## 4. `reducnn.analyzer`
-Diagnostic tools for research and decision-making.
+### `hybrid2.py`
+
+Contains support code for hybrid and layerwise method selection experiments.
+Thesis-specific LFPC objective experiments are documented separately in
+`docs/OBJECTIVE_LFPC_EXPERIMENTS.md`.
+
+## `reducnn.analyzer`
 
 ### `validator.py`
-- **Purpose:** Compares different math heuristics.
-- **Key Method:** `compare_methods()`: Calculates raw scores for multiple methods (e.g., L1 vs Taylor) and uses Spearman correlations to check their agreement.
+
+Compares pruning methods and validates score behavior. It is useful for checking
+whether methods produce compatible score shapes and for method-agreement
+analysis.
 
 ### `pareto.py`
-- **Purpose:** ROI analysis for stakeholders.
-- **Key Method:** `run()`: Executes a "Stress Test" by pruning the model at multiple intensities (20%, 40%, 60%, 80%) to generate the Accuracy vs. Efficiency tradeoff curve.
 
----
+Builds accuracy, compression, and runtime trade-off views across pruning
+settings.
 
-## 5. `reducnn.visualization`
-Decoupled plotting utilities for both technical research and business presentations.
+### `classifier.py`
+
+Contains classifier-oriented analysis helpers used by reporting workflows.
+
+## `reducnn.visualization`
 
 ### `stakeholder.py`
-- **Purpose:** "Big Picture" visuals.
-- **Functions:** 
-    - `plot_layer_sensitivity()`: A Red-to-Green bar chart showing which parts of the brain were removed.
-    - `plot_metrics_comparison()`: Side-by-side Params/FLOPs comparison.
-    - `plot_training_history()`: Visualizes fine-tuning convergence.
+
+High-level plots for model compression summaries, layer sensitivity, and
+training history.
 
 ### `research.py`
-- **Purpose:** Deep-dive diagnostics.
-- **Functions:**
-    - `plot_score_distributions()`: Histogram of filter importance.
-    - `plot_rank_correlation()`: Heatmap of method agreement.
 
----
+Research-facing diagnostic plots such as score distributions and rank
+correlations.
 
-## 6. Dataset & Model Generalization
-The framework is designed to be dataset-agnostic, allowing researchers to swap between standard benchmarks and custom datasets with zero changes to the core engine.
+### `animator.py`, `flow_animator.py`, `pruning_visualizer.py`, `persistence.py`
 
-### Dataset Auto-Discovery
-- **Shape Inference:** The `FrameworkAdapter` (both PyTorch and Keras) automatically detects the `input_shape` (e.g., 3x32x32 for CIFAR, 3x128x128 for CatDog) from the provided calibration data loader.
-- **Classification Head Adaptation:** The `get_model` factory dynamically adjusts the final `Dense` or `Linear` layer to match the `num_classes` parameter (e.g., 2 for CatDog, 10 for CIFAR-10, 100 for CIFAR-100).
-- **Normalization Handling:** Built-in training loops support any standard `DataLoader` or `tf.data.Dataset` object, ensuring that custom pre-processing and augmentations are preserved during the "healing" (fine-tuning) phase.
+Utilities for animated or persisted pruning visualizations and report artifacts.
 
-### Architectural Surgery: VGG vs. ResNet
-The framework distinguishes between **Linear Dependency Chains** and **Residual Clusters**:
+## `reducnn.engine`
 
-#### 1. VGG-Style (Sequential)
-- **Pattern:** `Conv -> BN -> ReLU -> Conv`
-- **Logic:** A "Cascading Cut" is performed. Removing filter $j$ in the first Conv requires removing index $j$ from the following BN and removing index $j$ from the **input channels** of the next Conv.
-- **Tracing:** Simple sequential look-ahead is sufficient to identify the next prunable layer.
+### `orchestrator.py`
 
-#### 2. ResNet-Style (Branched/Residual)
-- **Pattern:** `(Identity + Conv_Block) -> Add`
-- **Problem:** Because the output of the identity shortcut and the residual block are added, they MUST have the same number of channels. Independent pruning would cause a shape mismatch error.
-- **Solution (Cluster Harmonization):** 
-    - **Tracer:** The `TorchStructuralPruner` uses `torch.fx` to identify `Add` nodes and traces back to all contributing producers.
-    - **Harmonizer:** These producers are grouped into a "Cluster." The framework ensures that all members of a cluster receive the **exact same pruning mask**, maintaining mathematical consistency for the element-wise addition.
-    - **Idempotency:** The surgery engine tracks which inputs have already been shrunk to prevent "double-slicing" in complex multi-branch graphs.
- **### Architecture & Dataset Generalization
-The framework has been upgraded to support non-sequential models and generic datasets:
-- **Residual Cluster Management:** (PyTorch) Automatically identifies layers that must be pruned identically due to skip connections (e.g., in ResNet).
-- **Functional Rebuilder:** (Keras) Uses a graph-based reconstruction strategy to maintain connectivity in complex branching models.
-- **Dynamic Shape Detection:** Adapters now derive input dimensions and class counts automatically from the data loader or model configuration, allowing seamless transitions between MNIST (28x28), CIFAR (32x32), and ImageNet (224x224).
+Defines `Orchestrator`, a convenience wrapper for end-to-end workflows:
+
+1. build or load a baseline;
+2. prune with a configured method and scope;
+3. fine-tune the pruned model;
+4. save checkpoints and metrics.
+
+Use the lower-level adapters and `ReduCNNPruner` directly when an experiment
+needs full control over scoring, timing, or custom reporting.
+
+## Dataset And Architecture Notes
+
+ReduCNN is intended to be dataset-agnostic. Dataset shape, class count, and
+normalization should be supplied through config or inferred from loaders where
+the backend supports it.
+
+Architectures differ in pruning difficulty:
+
+- VGG-style sequential models are easier to prune because channel dependencies
+  mostly flow forward through convolution and batch-normalization chains.
+- ResNet-style residual models require dependency-aware pruning so shortcut and
+  residual branches remain shape-compatible.
+
+These architectural differences matter in the objective LFPC experiments:
+similar pruning ratios can produce different accuracy, FLOPs, parameter, and
+runtime behavior depending on model family, dataset, scope, and selected
+layerwise methods.
