@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ReduCNN"
 version = "0.88.0"
 authors = [
-  { name="Albert Raviss" },
+  { name="Albert Lutakome" },
 ]
 description = "Dual-framework (PyTorch & Keras) activation-based structural pruning."
 readme = "README.md"

@@ -154,11 +154,13 @@ print(list_method_names("torch"))
 ```
 
 Framework values:
+
 - `global`: method can be used by both backends.
 - `torch`: PyTorch-specific method.
 - `keras`: Keras-specific method.
 
 Useful arguments that may be passed to custom methods:
+
 - `layer`
 - `layer_name`
 - `model`
@@ -244,8 +246,8 @@ tests/             regression and workflow tests
 If you use ReduCNN in your research, please cite it using the following metadata:
 
 ```bibtex
-@software{Raviss_ReduCNN_2026,
-  author = {Raviss, Albert},
+@software{ReduCNN,
+  author = {Albert, Lutakome},
   title = {{ReduCNN: Dual-framework Activation-based Structural Pruning}},
   version = {0.88.0},
   doi = {10.5281/zenodo.FIXME},

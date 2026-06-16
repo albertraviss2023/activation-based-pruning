@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: "Raviss"
+- family-names: "Lutakome"
   given-names: "Albert"
 title: "ReduCNN: Dual-framework Activation-based Structural Pruning"
 version: 0.88.0

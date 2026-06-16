@@ -1,12 +1,21 @@
 # Release Notes - v0.88.0
 
-Date: 2026-03-25
+Date: 2026-06-16
 
 ## Summary
-v0.88.0 focuses on production workflow quality for research notebooks:
+v0.88.0 focuses on production workflow quality for research notebooks and academic reproducibility:
 - scoring defaults now reflect real pruning workflows (full calibration pass unless explicitly limited),
 - baseline handling is load-or-train by default,
-- experiment plots and visual outputs are persistable by default via run-scoped artifact directories.
+- experiment plots and visual outputs are persistable by default via run-scoped artifact directories,
+- metadata and licensing for Zenodo/GitHub archival.
+
+## Academic Reproducibility
+This version includes the following for peer-review and thesis defense:
+- `CITATION.cff` for automated citation metadata.
+- `LICENSE` (MIT) for open-source compliance.
+- `requirements.txt` for one-command environment setup.
+- `docs/ZENODO_GUIDE.md` for DOI minting.
+- Updated `README.md` with explicit reproducibility instructions.
 
 ## Why This Release
 The goal is to keep demo notebooks minimal while preserving research rigor:

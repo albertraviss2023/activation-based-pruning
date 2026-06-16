@@ -644,11 +644,28 @@ model, scope, objective, pruning ratio, and a complete layer-wise method policy.
         code(
             r'''
 MIN_EXPECTED_LAYERS = {"resnet18": 18, "vgg16": 13}
+VALID_LOCAL_METHODS_FOR_SCOPE_AUDIT = {
+    "l1_norm", "custom_l2", "mean_abs_act", "apoz", "custom_entropy",
+    "custom_gfi_ap", "custom_class_entropy", "custom_hrank", "custom_spectral_energy",
+}
+VALID_GLOBAL_METHODS_FOR_SCOPE_AUDIT = {
+    "chip", "custom_reprune", "custom_nisp", "custom_senpis", "custom_tis",
+    "custom_thinet", "custom_gfs", "custom_dcp", "custom_autodfp",
+}
+
+def _valid_methods_for_scope_audit(scope):
+    scope = str(scope).lower().strip()
+    if scope == "local":
+        return VALID_LOCAL_METHODS_FOR_SCOPE_AUDIT
+    if scope == "global":
+        return VALID_GLOBAL_METHODS_FOR_SCOPE_AUDIT
+    raise ValueError(f"Unsupported scope {scope!r}; expected local or global.")
 
 policy_rows = []
 for stack in stacks:
     sid = str(stack["stack_id"])
     model = str(stack["model"]).lower()
+    allowed_scope_methods = _valid_methods_for_scope_audit(stack["scope"])
     if model not in MIN_EXPECTED_LAYERS:
         raise ValueError(f"Unsupported model for stack {sid}: {model}")
     if len(stack["policy"]) < MIN_EXPECTED_LAYERS[model]:
@@ -661,6 +678,13 @@ for stack in stacks:
     names = [layer for layer, _method in stack["policy"]]
     if len(names) != len(set(names)):
         raise RuntimeError(f"Duplicate layer assignment in stack {sid}.")
+    bad_methods = sorted({str(method) for _layer, method in stack["policy"] if str(method) not in allowed_scope_methods})
+    if bad_methods:
+        raise RuntimeError(
+            f"Scope violation in frozen stack {sid}: scope={stack['scope']!r} but policy contains "
+            f"methods outside that scope: {bad_methods}. Local stacks must use only local criteria; "
+            "global stacks must use only global pruning methods."
+        )
     for i, (layer, method) in enumerate(stack["policy"], start=1):
         n = len(stack["policy"])
         region = "Early" if i <= int(np.ceil(n / 3)) else "Middle" if i <= int(np.ceil(2 * n / 3)) else "Late"
@@ -833,8 +857,46 @@ DATASET_CONFIG = {
 def safe_slug(text):
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(text)).strip("_") or "item"
 
+METHOD_SCOPE = {method: "local" for method in LOCAL_METHODS}
+METHOD_SCOPE.update({method: "global" for method in GLOBAL_METHODS})
+
 def same_scope_methods(scope):
-    return LOCAL_METHODS if str(scope).lower() == "local" else GLOBAL_METHODS
+    scope = str(scope).lower().strip()
+    if scope == "local":
+        return list(LOCAL_METHODS)
+    if scope == "global":
+        return list(GLOBAL_METHODS)
+    raise ValueError(f"Unknown pruning scope {scope!r}; expected 'local' or 'global'.")
+
+def assert_policy_respects_scope(policy, scope, label):
+    allowed = set(same_scope_methods(scope))
+    bad = sorted({str(method) for _layer, method in policy if str(method) not in allowed})
+    if bad:
+        raise RuntimeError(
+            f"Scope violation in {label}: scope={scope!r} but policy contains methods "
+            f"outside this scope: {bad}. Local policies must use only local criteria, "
+            "and global policies must use only global pruning methods."
+        )
+
+def assert_metric_rows_respect_scope(frame, scope, label):
+    if frame.empty or "method_type" not in frame.columns:
+        return
+    allowed = set(same_scope_methods(scope))
+    singular = frame[frame["method_type"].astype(str).eq("singular")].copy()
+    if singular.empty:
+        return
+    bad_scope = singular[singular["scope"].astype(str).str.lower() != str(scope).lower()]
+    bad_method = singular[~singular["method"].astype(str).isin(allowed)]
+    if not bad_scope.empty or not bad_method.empty:
+        issues = []
+        if not bad_scope.empty:
+            issues.append(f"{len(bad_scope)} singular rows have the wrong scope")
+        if not bad_method.empty:
+            issues.append(
+                "methods outside scope: "
+                + ", ".join(sorted(bad_method["method"].astype(str).unique())[:12])
+            )
+        raise RuntimeError(f"Scope-contaminated comparison rows for {label}: {'; '.join(issues)}")
 
 def effective_context_config(cfg):
     out = dict(cfg)
@@ -1174,12 +1236,21 @@ def run_prune(adapter, baseline, loaders, score_maps, policy, row_meta, cfg):
 def plot_comparison(context_df, stack_row):
     sid = str(stack_row["stack_id"])
     ctx = context_df.copy()
+    scope = str(stack_row["scope"]).lower()
+    ratio = float(stack_row["ratio"])
+    assert_metric_rows_respect_scope(ctx, scope, f"plot for stack {sid}")
     baseline = ctx[ctx["method_type"].eq("baseline")].iloc[0]
     hybrid = ctx[(ctx["method_type"].eq("hybrid")) & (ctx["stack_id"].astype(str).eq(sid))].iloc[0]
+    singular = ctx[
+        ctx["method_type"].eq("singular")
+        & ctx["scope"].astype(str).str.lower().eq(scope)
+        & np.isclose(pd.to_numeric(ctx["ratio"], errors="coerce"), ratio)
+        & ctx["method"].astype(str).isin(same_scope_methods(scope))
+    ].sort_values("method_display")
     methods = pd.concat([
         ctx[ctx["method_type"].eq("baseline")],
         ctx[(ctx["method_type"].eq("hybrid")) & (ctx["stack_id"].astype(str).eq(sid))],
-        ctx[ctx["method_type"].eq("singular")].sort_values("method_display"),
+        singular,
     ], ignore_index=True)
     y = np.arange(len(methods))
     fig = plt.figure(figsize=(22, max(7, 0.48 * len(methods))))
@@ -1271,6 +1342,14 @@ else:
     for (dataset, model, objective, scope, ratio), context_stacks in contexts.items():
         cfg = effective_context_config(DATASET_CONFIG[(dataset, model)])
         print(f"\n=== Context: {dataset} | {model} | {objective} | {scope} | r={ratio:g} ===")
+        allowed_context_methods = set(same_scope_methods(scope))
+        for stack in context_stacks:
+            assert_policy_respects_scope(
+                stack["policy"],
+                scope,
+                f"hybrid stack {stack['stack_id']} ({dataset}/{model}/{objective}/{scope}/r={ratio:g})",
+            )
+        print("Same-scope singular benchmark methods:", [METHOD_LABELS.get(m, m) for m in same_scope_methods(scope)])
         print(
             "Runtime settings:",
             {
@@ -1322,6 +1401,8 @@ else:
         # Singular baselines in the exact same context.
         if RUN_SINGULAR_BENCHMARKS:
             for method in same_scope_methods(scope):
+                if method not in allowed_context_methods:
+                    raise RuntimeError(f"Internal scope bug: method {method} is not valid for {scope}")
                 singular_policy = [(layer, method) for layer, _m in context_stacks[0]["policy"]]
                 artifact_id = f"singular_{dataset}_{model}_{objective}_{scope}_r{ratio:g}_{method}"
                 row_meta = {
