@@ -19,6 +19,7 @@ def _read_required_table(name: str) -> pd.DataFrame:
 def test_v4_checkpoint_direct_metrics_exist_and_include_direct_flops():
     metrics = _read_required_table("v4_checkpoint_direct_model_metrics.csv")
     comparison = _read_required_table("v4_hybrid_vs_singular_checkpoint_direct_long.csv")
+    baseline_scale = _read_required_table("v4_baseline_model_scale.csv")
 
     for col in [
         "record_type",
@@ -30,6 +31,12 @@ def test_v4_checkpoint_direct_metrics_exist_and_include_direct_flops():
         "direct_baseline_params",
         "direct_model_params",
         "direct_params_reduction_pct",
+        "direct_baseline_gops",
+        "direct_model_gops",
+        "direct_baseline_params_m",
+        "direct_model_params_m",
+        "absolute_metric_provenance",
+        "operation_count_convention",
     ]:
         assert col in metrics.columns, f"v4 direct metric table missing {col}"
 
@@ -41,6 +48,9 @@ def test_v4_checkpoint_direct_metrics_exist_and_include_direct_flops():
     direct_rows = comparison[comparison["metric"].astype(str).eq("direct_flops_reduction_pct")]
     assert not direct_rows.empty, "v4 comparison table has no direct FLOPs rows"
     assert direct_rows["metric_source"].astype(str).eq("checkpoint_direct").all()
+    assert len(baseline_scale) == 4
+    assert baseline_scale["baseline_gops_invariant"].astype(bool).all()
+    assert baseline_scale["baseline_params_invariant"].astype(bool).all()
 
 
 def test_v4_plots_and_layerwise_direct_tables_are_present():
@@ -48,6 +58,7 @@ def test_v4_plots_and_layerwise_direct_tables_are_present():
     layerwise = _read_required_table("v4_hybrid_layerwise_policy_linked_to_direct_metrics.csv")
 
     assert "comparison_plot" in manifest.columns
+    assert "absolute_footprint_plot" in manifest.columns
     plotted = manifest[manifest["comparison_plot"].astype(str).str.len().gt(0)].copy()
     assert not plotted.empty, "v4 did not create checkpoint-derived comparison plots"
     for value in plotted["comparison_plot"].head(20):
@@ -56,6 +67,15 @@ def test_v4_plots_and_layerwise_direct_tables_are_present():
             path = PROJECT_ROOT / path
         assert path.exists(), f"v4 plot listed in manifest is missing: {path}"
         assert path.stat().st_size > 1024, f"v4 plot is unexpectedly small: {path}"
+
+    absolute = manifest[manifest["absolute_footprint_plot"].fillna("").astype(str).str.len().gt(0)].copy()
+    assert not absolute.empty, "v4 did not create absolute footprint plots"
+    for value in absolute["absolute_footprint_plot"].head(20):
+        path = Path(str(value))
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        assert path.exists(), f"v4 absolute plot listed in manifest is missing: {path}"
+        assert path.stat().st_size > 1024, f"v4 absolute plot is unexpectedly small: {path}"
 
     assert "report_stack_id" in layerwise.columns
     assert "direct_flops_reduction_pct" in layerwise.columns
@@ -70,4 +90,6 @@ def test_v4_notebook_runs_builder_and_displays_comparison_gallery():
     assert "build_context_safe_report_v4_from_checkpoints.py" in source
     assert "V4 checkpoint-derived comparison plots" in source
     assert "v4_hybrid_layerwise_policy_linked_to_direct_metrics.csv" in source
+    assert "v4_baseline_model_scale.csv" in source
+    assert "absolute_footprint_plot" in source
     assert "Image(filename=str(path))" in source

@@ -15,6 +15,7 @@ project state notes. Start with the current guides below.
 - [UI GPU Guide](UI_GPU_GUIDE.md): GPU execution guidance for ReduCNN Studio.
 - [Running ReduCNN Studio on Google Colab](COLAB_UI.md): Colab tunnel setup.
 - [Repo Hygiene](REPO_HYGIENE.md): what should and should not be committed.
+- [Zenodo DOI Guide](ZENODO_GUIDE.md): how to finalize the academic release.
 
 ## Audits And Reports
 

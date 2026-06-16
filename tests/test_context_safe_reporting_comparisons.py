@@ -61,6 +61,36 @@ def test_top_hybrid_stacks_have_thesis_comparison_plots():
     assert not invalid_pngs, "comparison plot files are invalid:\n" + "\n".join(invalid_pngs[:20])
 
 
+def test_absolute_scale_and_appendix_plots_are_linked_to_exact_contexts():
+    manifest = _require_report_table("plot_manifest_layerwise_and_comparison.csv")
+    comparison = _require_report_table("hybrid_vs_singular_exact_context_long.csv")
+    baseline = _require_report_table("baseline_model_scale.csv")
+
+    assert len(baseline) == 4
+    assert baseline["baseline_gops_invariant"].astype(bool).all()
+    assert baseline["baseline_params_invariant"].astype(bool).all()
+    for col in [
+        "hybrid_model_gops",
+        "singular_model_gops",
+        "hybrid_model_params_m",
+        "singular_model_params_m",
+        "operation_count_convention",
+    ]:
+        assert col in comparison.columns
+    assert comparison["hybrid_model_gops"].notna().any()
+    assert comparison["singular_model_gops"].notna().any()
+
+    assert "absolute_footprint_plot" in manifest.columns
+    plotted = manifest[manifest["absolute_footprint_plot"].fillna("").astype(str).str.len().gt(0)]
+    assert not plotted.empty
+    for value in plotted["absolute_footprint_plot"].head(20):
+        path = Path(str(value))
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        assert path.exists(), f"absolute footprint plot is missing: {path}"
+        assert path.stat().st_size > 1024
+
+
 def test_context_safe_report_defaults_to_top_four_plotted_stacks():
     top = _require_report_table("top_hybrid_stacks_by_context.csv")
     manifest = _require_report_table("plot_manifest_layerwise_and_comparison.csv")
@@ -73,6 +103,13 @@ def test_context_safe_report_defaults_to_top_four_plotted_stacks():
     source = "\n".join("".join(cell.get("source", [])) for cell in notebook.get("cells", []))
     assert 'TOP_K_PER_CONTEXT = int(globals().get("TOP_K_PER_CONTEXT", 4))' in source
     assert "Layerwise policy plot for this same stack" in source
+    assert "Baseline model scale (checkpoint-derived)" in source
+    assert "SHOW_ABSOLUTE_FOOTPRINT_PLOTS" in source
+    assert "Refreshing context selection:" in source
+    assert "build_context_safe_report_v4_from_checkpoints.py" in source
+    assert "Refreshing checkpoint-derived metrics and absolute plots:" in source
+    assert "Rendering final context-safe report:" in source
+    assert "--skip-plots" in source
 
 
 def test_top_hybrid_stacks_have_layerwise_policy_plots():

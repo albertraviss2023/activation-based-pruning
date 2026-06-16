@@ -841,7 +841,6 @@ def build_comparisons(top_hybrids: pd.DataFrame, singular_cache: pd.DataFrame) -
             match = singular[
                 singular.get("dataset", pd.Series(dtype=str)).astype(str).eq(str(hybrid.get("dataset")))
                 & singular.get("model", pd.Series(dtype=str)).astype(str).eq(str(hybrid.get("model")))
-                & singular.get("scope", pd.Series(dtype=str)).astype(str).eq(str(hybrid.get("scope")))
                 & np.isclose(pd.to_numeric(singular.get("ratio", np.nan), errors="coerce"), safe_float(hybrid.get("ratio")))
             ].copy()
             if not match.empty and "method" in match.columns:
@@ -898,6 +897,74 @@ def build_comparisons(top_hybrids: pd.DataFrame, singular_cache: pd.DataFrame) -
                 advantage = hvf - svf if higher_is_better else svf - hvf
                 rows.append({**base, "metric": metric, "hybrid_value": hvf, "singular_value": svf, "hybrid_advantage_vs_singular": advantage if math.isfinite(advantage) else math.nan, "advantage_direction": "positive means hybrid is better than singular"})
     return pd.DataFrame(rows), pd.DataFrame(audits)
+
+
+def augment_comparisons_with_v4_absolute_metrics(
+    comparison: pd.DataFrame,
+    v4_comparison: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach checkpoint-derived absolute compute and parameter values."""
+    if comparison.empty:
+        return comparison.copy()
+    out = comparison.copy()
+    absolute_cols = [
+        "hybrid_baseline_gops",
+        "hybrid_model_gops",
+        "hybrid_removed_gops",
+        "singular_baseline_gops",
+        "singular_model_gops",
+        "singular_removed_gops",
+        "hybrid_baseline_params_m",
+        "hybrid_model_params_m",
+        "hybrid_removed_params_m",
+        "singular_baseline_params_m",
+        "singular_model_params_m",
+        "singular_removed_params_m",
+        "hybrid_absolute_metric_provenance",
+        "singular_absolute_metric_provenance",
+        "operation_count_convention",
+    ]
+    if v4_comparison.empty:
+        for col in absolute_cols:
+            out[col] = "" if "provenance" in col or col == "operation_count_convention" else math.nan
+        return out
+
+    direct = v4_comparison[
+        v4_comparison.get("metric", pd.Series(dtype=str)).astype(str).eq("direct_flops_reduction_pct")
+    ].copy()
+    join_cols = [
+        "objective",
+        "dataset",
+        "model",
+        "scope",
+        "ratio",
+        "context_rank",
+        "report_stack_id",
+        "singular_method",
+    ]
+    usable_join_cols = [c for c in join_cols if c in out.columns and c in direct.columns]
+    if not usable_join_cols:
+        for col in absolute_cols:
+            out[col] = "" if "provenance" in col or col == "operation_count_convention" else math.nan
+        return out
+    for col in usable_join_cols:
+        if col == "ratio":
+            out[col] = pd.to_numeric(out[col], errors="coerce").round(8)
+            direct[col] = pd.to_numeric(direct[col], errors="coerce").round(8)
+        elif col == "context_rank":
+            out[col] = pd.to_numeric(out[col], errors="coerce").astype("Int64")
+            direct[col] = pd.to_numeric(direct[col], errors="coerce").astype("Int64")
+        else:
+            out[col] = out[col].astype(str).str.replace(r"\.0$", "", regex=True)
+            direct[col] = direct[col].astype(str).str.replace(r"\.0$", "", regex=True)
+    direct = direct[
+        usable_join_cols + [c for c in absolute_cols if c in direct.columns]
+    ].drop_duplicates(usable_join_cols, keep="first")
+    out = out.merge(direct, on=usable_join_cols, how="left")
+    for col in absolute_cols:
+        if col not in out.columns:
+            out[col] = "" if "provenance" in col or col == "operation_count_convention" else math.nan
+    return out
 
 
 def build_local_flops_variability_diagnostic(comparison: pd.DataFrame) -> pd.DataFrame:
@@ -1169,13 +1236,40 @@ def plot_comparison(stack: pd.Series, comparison: pd.DataFrame, fig_dir: Path) -
         if not sub.empty:
             bars = ax.bar(sub["singular_method_display"], sub["singular_value"], color=color, alpha=0.72, label="Singular method")
             try:
-                ax.bar_label(bars, labels=[f"{v:.2f}" for v in sub["singular_value"]], padding=2, fontsize=7)
+                if metric == "flops_reduction_pct" and "singular_model_gops" in sub.columns:
+                    labels = [
+                        f"{value:.1f}%\n{safe_float(gops):.3f}"
+                        if math.isfinite(safe_float(gops))
+                        else f"{value:.2f}%"
+                        for value, gops in zip(sub["singular_value"], sub["singular_model_gops"])
+                    ]
+                else:
+                    labels = [f"{v:.2f}" for v in sub["singular_value"]]
+                ax.bar_label(bars, labels=labels, padding=2, fontsize=7)
             except Exception:
                 pass
         else:
             ax.text(0.5, 0.5, "No same-context singular values", transform=ax.transAxes, ha="center", va="center")
         if math.isfinite(hv):
-            ax.axhline(hv, color="#111827", linestyle="--", linewidth=1.5, label=hlabel)
+            hybrid_label = hlabel
+            if metric == "flops_reduction_pct" and "hybrid_model_gops" in sub.columns:
+                hybrid_gops = safe_float(sub["hybrid_model_gops"].dropna().iloc[0]) if not sub["hybrid_model_gops"].dropna().empty else math.nan
+                if math.isfinite(hybrid_gops):
+                    hybrid_label = f"{hlabel}: {hv:.2f}% / {hybrid_gops:.3f} GOp remaining"
+                baseline_gops = safe_float(sub["hybrid_baseline_gops"].dropna().iloc[0]) if "hybrid_baseline_gops" in sub.columns and not sub["hybrid_baseline_gops"].dropna().empty else math.nan
+                if math.isfinite(baseline_gops):
+                    ax.text(
+                        0.02,
+                        0.06,
+                        f"Unpruned baseline: {baseline_gops:.3f} GOp",
+                        transform=ax.transAxes,
+                        ha="left",
+                        va="bottom",
+                        fontsize=8,
+                        color="#334155",
+                        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#CBD5E1", alpha=0.88),
+                    )
+            ax.axhline(hv, color="#111827", linestyle="--", linewidth=1.5, label=hybrid_label)
         else:
             ax.text(
                 0.5,
@@ -1191,36 +1285,32 @@ def plot_comparison(stack: pd.Series, comparison: pd.DataFrame, fig_dir: Path) -
         if metric == "accuracy_delta_pp":
             ax.axhline(0, color="#64748B", linewidth=0.8)
         if metric == "flops_reduction_pct":
-            sval = pd.to_numeric(sub.get("singular_value", pd.Series(dtype=float)), errors="coerce").dropna()
-            same_singular = (not sval.empty) and (sval.max() - sval.min() <= 1e-6)
-            same_as_hybrid = same_singular and math.isfinite(hv) and abs(float(sval.iloc[0]) - hv) <= 1e-6
-            if str(stack.get("scope")).lower() == "local" and same_as_hybrid:
+            values = pd.to_numeric(sub.get("singular_value", pd.Series(dtype=float)), errors="coerce").dropna()
+            ymax = max([safe_float(hv, 0.0), *values.tolist(), 1.0])
+            ax.set_ylim(top=ymax * 1.18)
+            if "singular_model_gops" in sub.columns and sub["singular_model_gops"].notna().any():
                 ax.text(
-                    0.5,
-                    0.93,
-                    "Source artifacts report identical structural FLOPs for local methods",
+                    0.98,
+                    0.06,
+                    "Bar labels: reduction % / remaining GOp",
                     transform=ax.transAxes,
-                    ha="center",
-                    va="top",
-                    fontsize=8,
-                    color="#334155",
-                    bbox=dict(boxstyle="round,pad=0.25", facecolor="white", edgecolor="#CBD5E1", alpha=0.88),
-                )
-                ax.text(
-                    0.5,
-                    0.84,
-                    "This is reported as-is; verify exporter if method-specific FLOPs should differ",
-                    transform=ax.transAxes,
-                    ha="center",
-                    va="top",
+                    ha="right",
+                    va="bottom",
                     fontsize=7,
-                    color="#64748B",
+                    color="#475569",
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#CBD5E1", alpha=0.88),
                 )
         ax.set_ylabel(ylabel)
-        ax.set_title(metric.replace("_", " "))
+        if metric == "flops_reduction_pct":
+            ax.set_title("FLOPs reduction and remaining compute", pad=46)
+        else:
+            ax.set_title(metric.replace("_", " "))
         ax.tick_params(axis="x", rotation=55)
         ax.grid(axis="y", alpha=0.25)
-        ax.legend(fontsize=7)
+        if metric == "flops_reduction_pct":
+            ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.01), ncol=2, fontsize=6.5)
+        else:
+            ax.legend(fontsize=7)
     gate_label = "accuracy gate pass" if bool(stack.get("accuracy_gate_passed", False)) else "accuracy gate fail"
     reason = norm_text(stack.get("rank_selection_reason")) or "ranked"
     fig.suptitle(
@@ -1232,6 +1322,58 @@ def plot_comparison(stack: pd.Series, comparison: pd.DataFrame, fig_dir: Path) -
     )
     fig.tight_layout()
     out = fig_dir / f"comparison_{safe_slug(stack.get('objective'))}_{safe_slug(stack.get('dataset'))}_{safe_slug(stack.get('model'))}_{safe_slug(stack.get('scope'))}_r{safe_slug(stack.get('ratio'))}_rank{int(stack.get('context_rank'))}_{safe_slug(stack.get('report_stack_id'))}.png"
+    fig.savefig(out, dpi=180, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def plot_absolute_footprint(stack: pd.Series, comparison: pd.DataFrame, fig_dir: Path) -> Path | None:
+    """Create an appendix-ready absolute remaining GOp and parameter plot."""
+    comp = comparison[
+        comparison["report_stack_id"].astype(str).eq(str(stack.get("report_stack_id")))
+        & comparison["objective"].astype(str).eq(str(stack.get("objective")))
+        & comparison["dataset"].astype(str).eq(str(stack.get("dataset")))
+        & comparison["model"].astype(str).eq(str(stack.get("model")))
+        & comparison["scope"].astype(str).eq(str(stack.get("scope")))
+        & np.isclose(pd.to_numeric(comparison["ratio"], errors="coerce"), safe_float(stack.get("ratio")))
+    ].copy()
+    if comp.empty or not {"singular_model_gops", "singular_model_params_m"}.issubset(comp.columns):
+        return None
+
+    method_rows = comp.sort_values("singular_method_display").drop_duplicates("singular_method_display")
+    if method_rows["singular_model_gops"].notna().sum() == 0 and method_rows["singular_model_params_m"].notna().sum() == 0:
+        return None
+    fig, axes = plt.subplots(1, 2, figsize=(13.5, 4.8))
+    panels = [
+        ("singular_model_gops", "hybrid_model_gops", "hybrid_baseline_gops", "Remaining compute (GOp)", "#2563EB"),
+        ("singular_model_params_m", "hybrid_model_params_m", "hybrid_baseline_params_m", "Remaining parameters (millions)", "#7C3AED"),
+    ]
+    for ax, (singular_col, hybrid_col, baseline_col, ylabel, color) in zip(axes, panels):
+        panel = method_rows.dropna(subset=[singular_col]).sort_values(singular_col)
+        if not panel.empty:
+            bars = ax.bar(panel["singular_method_display"], panel[singular_col], color=color, alpha=0.72, label="Singular method")
+            ax.bar_label(bars, labels=[f"{v:.3f}" for v in panel[singular_col]], padding=2, fontsize=7)
+        hybrid_value = safe_float(method_rows[hybrid_col].dropna().iloc[0]) if not method_rows[hybrid_col].dropna().empty else math.nan
+        baseline_value = safe_float(method_rows[baseline_col].dropna().iloc[0]) if not method_rows[baseline_col].dropna().empty else math.nan
+        if math.isfinite(hybrid_value):
+            ax.axhline(hybrid_value, color="#111827", linestyle="--", linewidth=1.6, label=f"Hybrid: {hybrid_value:.3f}")
+        if math.isfinite(baseline_value):
+            ax.axhline(baseline_value, color="#64748B", linestyle=":", linewidth=1.2, label=f"Unpruned baseline: {baseline_value:.3f}")
+        ax.set_title(ylabel)
+        ax.set_ylabel(ylabel)
+        ax.tick_params(axis="x", rotation=55)
+        ax.grid(axis="y", alpha=0.25)
+        handles, labels = ax.get_legend_handles_labels()
+        if handles:
+            ax.legend(handles, labels, fontsize=8)
+    fig.suptitle(
+        f"Absolute checkpoint-derived footprint | {stack.get('report_stack_id')} | {stack.get('objective_label')} | "
+        f"{stack.get('dataset')} | {stack.get('model')} | {stack.get('scope')} | r={safe_float(stack.get('ratio')):g}",
+        fontsize=11,
+    )
+    fig.text(0.5, 0.01, "GOp convention: one multiply-accumulate is counted as one operation.", ha="center", fontsize=8, color="#475569")
+    fig.tight_layout(rect=(0, 0.04, 1, 0.95))
+    out = fig_dir / f"absolute_{safe_slug(stack.get('objective'))}_{safe_slug(stack.get('dataset'))}_{safe_slug(stack.get('model'))}_{safe_slug(stack.get('scope'))}_r{safe_slug(stack.get('ratio'))}_rank{int(stack.get('context_rank'))}_{safe_slug(stack.get('report_stack_id'))}.png"
     fig.savefig(out, dpi=180, bbox_inches="tight")
     plt.close(fig)
     return out
@@ -1249,7 +1391,6 @@ def plot_paretos(ranked: pd.DataFrame, singular_cache: pd.DataFrame, fig_dir: Pa
             singular = singular[
                 singular.get("dataset", pd.Series(dtype=str)).astype(str).eq(str(dataset))
                 & singular.get("model", pd.Series(dtype=str)).astype(str).eq(str(model))
-                & singular.get("scope", pd.Series(dtype=str)).astype(str).eq(str(scope))
                 & np.isclose(pd.to_numeric(singular.get("ratio", np.nan), errors="coerce"), safe_float(ratio))
             ].copy()
             singular["report_stack_id"] = singular.get("method", pd.Series(dtype=str)).apply(method_display)
@@ -1472,12 +1613,14 @@ def write_outputs(args: argparse.Namespace) -> None:
     fig_dir = report_dir / "plots"
     layer_fig_dir = fig_dir / "layerwise_policies"
     comp_fig_dir = fig_dir / "hybrid_vs_singular"
+    absolute_fig_dir = fig_dir / "absolute_footprints"
     pareto_fig_dir = fig_dir / "pareto"
     summary_fig_dir = fig_dir / "summary"
-    for generated_dir in [table_dir, fig_dir]:
+    generated_dirs = [table_dir] if args.skip_plots else [table_dir, fig_dir]
+    for generated_dir in generated_dirs:
         if generated_dir.exists():
             shutil.rmtree(generated_dir, ignore_errors=True)
-    for directory in [table_dir, layer_fig_dir, comp_fig_dir, pareto_fig_dir, summary_fig_dir]:
+    for directory in [table_dir, layer_fig_dir, comp_fig_dir, absolute_fig_dir, pareto_fig_dir, summary_fig_dir]:
         directory.mkdir(parents=True, exist_ok=True)
 
     if args.refresh_registry:
@@ -1530,7 +1673,7 @@ def write_outputs(args: argparse.Namespace) -> None:
     flops_backfill_audit.to_csv(table_dir / "hybrid_flops_backfill_audit.csv", index=False)
     context_summary.to_csv(table_dir / "context_overview.csv", index=False)
     registry_quality_audit.to_csv(table_dir / "registry_quality_audit.csv", index=False)
-    coverage_plot = plot_context_coverage(context_summary, summary_fig_dir)
+    coverage_plot = None if args.skip_plots else plot_context_coverage(context_summary, summary_fig_dir)
 
     ranked, top = rank_hybrids(contexts, args.top_k, args.accuracy_gate_pp)
     ranked.to_csv(table_dir / "all_ranked_hybrid_stacks_by_context.csv", index=False)
@@ -1547,17 +1690,24 @@ def write_outputs(args: argparse.Namespace) -> None:
     compact_policy.to_csv(table_dir / "hybrid_compact_layerwise_policies.csv", index=False)
 
     comparison, alignment = build_comparisons(top, singular_cache)
+    v4_report_dir = (project_root / args.v4_report_dir).resolve() if not args.v4_report_dir.is_absolute() else args.v4_report_dir
+    v4_table_dir = v4_report_dir / "tables"
+    v4_comparison = read_csv_safe(v4_table_dir / "v4_hybrid_vs_singular_checkpoint_direct_long.csv")
+    comparison = augment_comparisons_with_v4_absolute_metrics(comparison, v4_comparison)
     comparison.to_csv(table_dir / "hybrid_vs_singular_exact_context_long.csv", index=False)
+    baseline_scale = read_csv_safe(v4_table_dir / "v4_baseline_model_scale.csv")
+    baseline_scale.to_csv(table_dir / "baseline_model_scale.csv", index=False)
     alignment.to_csv(table_dir / "hybrid_singular_alignment_audit.csv", index=False)
     local_flops_variability = build_local_flops_variability_diagnostic(comparison)
     local_flops_variability.to_csv(table_dir / "local_scope_flops_variability_diagnostic.csv", index=False)
-    readiness_plot = plot_alignment_readiness(alignment, summary_fig_dir)
+    readiness_plot = None if args.skip_plots else plot_alignment_readiness(alignment, summary_fig_dir)
 
-    selected_for_plots = top.head(args.max_plots) if args.max_plots is not None else top
+    selected_for_plots = pd.DataFrame() if args.skip_plots else (top.head(args.max_plots) if args.max_plots is not None else top)
     plot_rows = []
     for _, stack in selected_for_plots.iterrows():
         layer_plot = plot_layerwise(stack, layerwise, layer_fig_dir)
         comparison_plot = plot_comparison(stack, comparison, comp_fig_dir)
+        absolute_plot = plot_absolute_footprint(stack, comparison, absolute_fig_dir)
         plot_rows.append(
             {
                 **{k: stack.get(k) for k in COARSE_CONTEXT_KEYS},
@@ -1567,6 +1717,7 @@ def write_outputs(args: argparse.Namespace) -> None:
                 "stack_id": stack.get("stack_id"),
                 "layerwise_plot": str(layer_plot) if layer_plot else "",
                 "comparison_plot": str(comparison_plot) if comparison_plot else "",
+                "absolute_footprint_plot": str(absolute_plot) if absolute_plot else "",
             }
         )
     plot_manifest = pd.DataFrame(plot_rows)
@@ -1598,12 +1749,15 @@ def write_outputs(args: argparse.Namespace) -> None:
         )
         top_rank_coverage.to_csv(table_dir / "top_hybrid_policy_coverage_audit.csv", index=False)
         top_rank_coverage.to_csv(table_dir / "top2_hybrid_policy_coverage_audit.csv", index=False)  # backward-compatible alias
-    pareto_manifest, pareto_points = plot_paretos(ranked, singular_cache, pareto_fig_dir, args.accuracy_gate_pp)
+    if args.skip_plots:
+        pareto_manifest, pareto_points = pd.DataFrame(), pd.DataFrame()
+    else:
+        pareto_manifest, pareto_points = plot_paretos(ranked, singular_cache, pareto_fig_dir, args.accuracy_gate_pp)
     pareto_manifest.to_csv(table_dir / "plot_manifest_pareto.csv", index=False)
     pareto_points.to_csv(table_dir / "pareto_points_by_exact_context.csv", index=False)
     pareto_candidates = pareto_points[pareto_points.get("is_pareto_candidate", pd.Series(dtype=bool)).astype(bool)].copy() if not pareto_points.empty else pd.DataFrame()
     pareto_candidates.to_csv(table_dir / "pareto_candidates_by_exact_context.csv", index=False)
-    region_manifest = plot_region_heatmaps(layerwise, summary_fig_dir)
+    region_manifest = pd.DataFrame() if args.skip_plots else plot_region_heatmaps(layerwise, summary_fig_dir)
     region_manifest.to_csv(table_dir / "plot_manifest_region_method_heatmaps.csv", index=False)
 
     if not top.empty:
@@ -1745,6 +1899,7 @@ def write_outputs(args: argparse.Namespace) -> None:
         "- `tables/hybrid_layerwise_policy_linked_to_metrics.csv`",
         "- `tables/hybrid_vs_singular_exact_context_long.csv`",
         "- `tables/hybrid_vs_singular_win_rates.csv`",
+        "- `tables/baseline_model_scale.csv`",
         "- `tables/objective_dataset_model_scope_summary.csv`",
         "- `tables/local_scope_flops_variability_diagnostic.csv`",
         "- `tables/qc_summary.csv`",
@@ -1752,6 +1907,7 @@ def write_outputs(args: argparse.Namespace) -> None:
         "## Key plots",
         "- `plots/layerwise_policies/`",
         "- `plots/hybrid_vs_singular/`",
+        "- `plots/absolute_footprints/`",
         "- `plots/pareto/`",
         "- `plots/summary/`",
     ]
@@ -1772,6 +1928,7 @@ def write_outputs(args: argparse.Namespace) -> None:
             "comparison_rows": int(len(comparison)),
             "layerwise_plots": int(plot_manifest["layerwise_plot"].astype(bool).sum()) if not plot_manifest.empty else 0,
             "comparison_plots": int(plot_manifest["comparison_plot"].astype(bool).sum()) if not plot_manifest.empty else 0,
+            "absolute_footprint_plots": int(plot_manifest.get("absolute_footprint_plot", pd.Series(dtype=str)).astype(bool).sum()) if not plot_manifest.empty else 0,
             "pareto_plots": int(len(pareto_manifest)),
             "region_heatmaps": int(len(region_manifest)),
         },
@@ -1787,6 +1944,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--outputs-root", type=Path, default=Path("outputs/lfpc_hybrid"))
     parser.add_argument("--registry-dir", type=Path, default=Path("reports/experiment_registry"))
     parser.add_argument("--report-dir", type=Path, default=Path("report_artifacts/context_safe_hybrid_singular_report"))
+    parser.add_argument("--v4-report-dir", type=Path, default=Path("report_artifacts/context_safe_hybrid_singular_report_v4_model_metrics"))
     parser.add_argument("--top-k", type=int, default=2)
     parser.add_argument("--accuracy-gate-pp", type=float, default=7.0)
     parser.add_argument("--max-plots", type=int, default=None)
@@ -1796,6 +1954,7 @@ def parse_args() -> argparse.Namespace:
         help="Comma-separated prune ratios to include in context-safe reporting. Use 'all' to disable filtering.",
     )
     parser.add_argument("--refresh-registry", action="store_true")
+    parser.add_argument("--skip-plots", action="store_true", help="Build context tables and top-stack selection without rendering figures.")
     return parser.parse_args()
 
 

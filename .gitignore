@@ -44,8 +44,7 @@ Legacy/
 report_artifacts/
 reports/
 thesis/
-custom_methods/
-ui/
+time_acc/
 docker-compose.yml
 docs/UI_GPU_GUIDE.md
 docs/COLAB_UI.md

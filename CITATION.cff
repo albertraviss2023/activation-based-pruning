@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Raviss"
+  given-names: "Albert"
+title: "ReduCNN: Dual-framework Activation-based Structural Pruning"
+version: 0.88.0
+doi: 10.5281/zenodo.FIXME  # Replace with actual DOI after Zenodo release
+date-released: 2026-06-16
+url: "https://github.com/albertraviss2023/activation-based-pruning"
+repository-code: "https://github.com/albertraviss2023/activation-based-pruning"
+license: MIT
+keywords:
+  - structural pruning
+  - convolutional neural networks
+  - pytorch
+  - keras
+  - reproducibility

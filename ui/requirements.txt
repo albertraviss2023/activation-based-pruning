@@ -1,0 +1,12 @@
+streamlit>=1.34
+pandas>=2.0
+numpy
+matplotlib
+seaborn
+plotly
+networkx
+pillow
+tqdm
+thop
+torch
+torchvision

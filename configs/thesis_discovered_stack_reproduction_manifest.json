@@ -1,0 +1,1473 @@
+{
+  "schema_version": "2.0",
+  "description": "Frozen thesis-discovered hybrid pruning stacks to reproduce and benchmark afresh against same-context singular methods.",
+  "source_tables": {
+    "integrated_top_policy_report": "report_artifacts\\context_safe_hybrid_singular_report\\tables\\integrated_top_policy_report.csv",
+    "hybrid_layerwise_policy_linked_to_metrics": "report_artifacts\\context_safe_hybrid_singular_report\\tables\\hybrid_layerwise_policy_linked_to_metrics.csv",
+    "legacy_cifar10_global_manifest": "configs\\discovered_cifar10_global_flops_accuracy_stacks.json"
+  },
+  "healing_epochs": 3,
+  "stacks": [
+    {
+      "stack_id": "9000",
+      "source_report_stack_id": "9000",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_resnet18_global_r0.3_v0.05_s0.5_j0.5",
+      "source_run_id": "lfpc_cifar10_resnet18_flops_accuracy_20260521_115829",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "resnet18",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "global",
+      "ratio": 0.3,
+      "context_rank": 2,
+      "reported_accuracy_delta_pp": 10.049999999999995,
+      "reported_flops_reduction_pct": 38.55638500606171,
+      "reported_time_sec": 75.10994341899641,
+      "policy": [
+        [
+          "conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer1.0.conv1",
+          "custom_reprune"
+        ],
+        [
+          "layer1.0.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer1.1.conv1",
+          "custom_autodfp"
+        ],
+        [
+          "layer1.1.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_thinet"
+        ],
+        [
+          "layer2.0.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_thinet"
+        ],
+        [
+          "layer2.1.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer2.1.conv2",
+          "custom_gfs"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "custom_tis"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer3.0.conv2",
+          "custom_autodfp"
+        ],
+        [
+          "layer3.1.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_reprune"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "custom_thinet"
+        ],
+        [
+          "layer4.0.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer4.0.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer4.1.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer4.1.conv2",
+          "custom_autodfp"
+        ]
+      ]
+    },
+    {
+      "stack_id": "9738",
+      "source_report_stack_id": "9245",
+      "model": "resnet18",
+      "ratio": 0.45,
+      "source_run_id": "lfpc_cifar10_resnet18_flops_accuracy_20260521_115829",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_resnet18_global_r0.45_v0.05_s0.5_j0.7",
+      "id_note": "The thesis timeline uses 9738. The latest context-safe artifact assigns 9245 to the same source stack key; both IDs are retained for traceability.",
+      "policy": [
+        [
+          "conv1",
+          "custom_reprune"
+        ],
+        [
+          "layer1.0.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer1.0.conv2",
+          "custom_thinet"
+        ],
+        [
+          "layer1.1.conv1",
+          "custom_nisp"
+        ],
+        [
+          "layer1.1.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_tis"
+        ],
+        [
+          "layer2.0.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer2.1.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer2.1.conv2",
+          "chip"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "custom_autodfp"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_gfs"
+        ],
+        [
+          "layer3.0.conv2",
+          "custom_thinet"
+        ],
+        [
+          "layer3.1.conv1",
+          "custom_autodfp"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_reprune"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "custom_autodfp"
+        ],
+        [
+          "layer4.0.conv1",
+          "custom_autodfp"
+        ],
+        [
+          "layer4.0.conv2",
+          "chip"
+        ],
+        [
+          "layer4.1.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer4.1.conv2",
+          "custom_reprune"
+        ]
+      ],
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "global",
+      "context_rank": 1
+    },
+    {
+      "stack_id": "3583",
+      "source_report_stack_id": "3583",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_resnet18_global_r0.55_v0.05_s0.7_j0.7",
+      "source_run_id": "lfpc_cifar10_resnet18_flops_accuracy_20260521_115829",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "resnet18",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "global",
+      "ratio": 0.55,
+      "context_rank": 2,
+      "reported_accuracy_delta_pp": 2.6999999999999886,
+      "reported_flops_reduction_pct": 64.00288796504447,
+      "reported_time_sec": 1178.6223419319997,
+      "policy": [
+        [
+          "conv1",
+          "custom_gfs"
+        ],
+        [
+          "layer1.0.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer1.0.conv2",
+          "custom_autodfp"
+        ],
+        [
+          "layer1.1.conv1",
+          "custom_reprune"
+        ],
+        [
+          "layer1.1.conv2",
+          "chip"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_gfs"
+        ],
+        [
+          "layer2.0.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer2.1.conv1",
+          "custom_nisp"
+        ],
+        [
+          "layer2.1.conv2",
+          "custom_thinet"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "custom_tis"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_autodfp"
+        ],
+        [
+          "layer3.0.conv2",
+          "custom_senpis"
+        ],
+        [
+          "layer3.1.conv1",
+          "custom_autodfp"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_reprune"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "custom_thinet"
+        ],
+        [
+          "layer4.0.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer4.0.conv2",
+          "custom_gfs"
+        ],
+        [
+          "layer4.1.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer4.1.conv2",
+          "custom_tis"
+        ]
+      ]
+    },
+    {
+      "stack_id": "7910",
+      "source_report_stack_id": "7910",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_vgg16_global_r0.3_v0.2_s0.5_j0.7",
+      "source_run_id": "lfpc_cifar10_vgg16_flops_accuracy_20260521_082543",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "global",
+      "ratio": 0.3,
+      "context_rank": 3,
+      "reported_accuracy_delta_pp": 10.259999999999993,
+      "reported_flops_reduction_pct": 31.080234554009152,
+      "reported_time_sec": 1229.6077118370004,
+      "policy": [
+        [
+          "features.0",
+          "custom_tis"
+        ],
+        [
+          "features.2",
+          "custom_autodfp"
+        ],
+        [
+          "features.5",
+          "custom_reprune"
+        ],
+        [
+          "features.7",
+          "custom_nisp"
+        ],
+        [
+          "features.10",
+          "custom_reprune"
+        ],
+        [
+          "features.12",
+          "custom_reprune"
+        ],
+        [
+          "features.14",
+          "chip"
+        ],
+        [
+          "features.17",
+          "custom_dcp"
+        ],
+        [
+          "features.19",
+          "custom_reprune"
+        ],
+        [
+          "features.21",
+          "custom_tis"
+        ],
+        [
+          "features.24",
+          "custom_dcp"
+        ],
+        [
+          "features.26",
+          "custom_tis"
+        ],
+        [
+          "features.28",
+          "custom_nisp"
+        ]
+      ]
+    },
+    {
+      "stack_id": "6256",
+      "source_report_stack_id": "6256",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_vgg16_global_r0.45_v0.05_s0.5_j0.7",
+      "source_run_id": "lfpc_cifar10_vgg16_flops_accuracy_20260521_082543",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "global",
+      "ratio": 0.45,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": 10.099999999999994,
+      "reported_flops_reduction_pct": 35.58281899226925,
+      "reported_time_sec": 1230.8316583620003,
+      "policy": [
+        [
+          "features.0",
+          "custom_tis"
+        ],
+        [
+          "features.2",
+          "custom_nisp"
+        ],
+        [
+          "features.5",
+          "custom_nisp"
+        ],
+        [
+          "features.7",
+          "custom_nisp"
+        ],
+        [
+          "features.10",
+          "chip"
+        ],
+        [
+          "features.12",
+          "custom_autodfp"
+        ],
+        [
+          "features.14",
+          "custom_autodfp"
+        ],
+        [
+          "features.17",
+          "custom_reprune"
+        ],
+        [
+          "features.19",
+          "custom_dcp"
+        ],
+        [
+          "features.21",
+          "custom_dcp"
+        ],
+        [
+          "features.24",
+          "custom_tis"
+        ],
+        [
+          "features.26",
+          "custom_gfs"
+        ],
+        [
+          "features.28",
+          "custom_gfs"
+        ]
+      ]
+    },
+    {
+      "stack_id": "8802",
+      "source_report_stack_id": "8802",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_vgg16_global_r0.55_v0.05_s0.7_j0.7",
+      "source_run_id": "lfpc_cifar10_vgg16_flops_accuracy_20260521_082543",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "global",
+      "ratio": 0.55,
+      "context_rank": 3,
+      "reported_accuracy_delta_pp": 4.86999999999999,
+      "reported_flops_reduction_pct": 61.09601872425532,
+      "reported_time_sec": 52.321759603999794,
+      "policy": [
+        [
+          "features.0",
+          "custom_tis"
+        ],
+        [
+          "features.2",
+          "custom_nisp"
+        ],
+        [
+          "features.5",
+          "custom_reprune"
+        ],
+        [
+          "features.7",
+          "custom_nisp"
+        ],
+        [
+          "features.10",
+          "custom_autodfp"
+        ],
+        [
+          "features.12",
+          "custom_reprune"
+        ],
+        [
+          "features.14",
+          "custom_autodfp"
+        ],
+        [
+          "features.17",
+          "custom_gfs"
+        ],
+        [
+          "features.19",
+          "custom_tis"
+        ],
+        [
+          "features.21",
+          "custom_tis"
+        ],
+        [
+          "features.24",
+          "custom_dcp"
+        ],
+        [
+          "features.26",
+          "custom_gfs"
+        ],
+        [
+          "features.28",
+          "custom_tis"
+        ]
+      ]
+    },
+    {
+      "stack_id": "3265",
+      "source_report_stack_id": "3265",
+      "source_stack_key": "LFPC_time_accuracy_cifar10_resnet18_local_r0.55_v0.05_s0.5_j0.7",
+      "source_run_id": "lfpc_CIFAR-10_ResNet18_time_accuracy_20260513_084515",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "resnet18",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "local",
+      "ratio": 0.55,
+      "context_rank": 2,
+      "reported_accuracy_delta_pp": -14.880000000000004,
+      "reported_flops_reduction_pct": 79.44275849384698,
+      "reported_time_sec": 72.89174269499927,
+      "policy": [
+        [
+          "conv1",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer1.0.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer1.0.conv2",
+          "mean_abs_act"
+        ],
+        [
+          "layer1.1.conv1",
+          "custom_entropy"
+        ],
+        [
+          "layer1.1.conv2",
+          "custom_class_entropy"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_l2"
+        ],
+        [
+          "layer2.0.conv1",
+          "custom_class_entropy"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer2.1.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer2.1.conv2",
+          "custom_l2"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "mean_abs_act"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_l2"
+        ],
+        [
+          "layer3.0.conv2",
+          "l1_norm"
+        ],
+        [
+          "layer3.1.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_entropy"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "apoz"
+        ],
+        [
+          "layer4.0.conv1",
+          "custom_hrank"
+        ],
+        [
+          "layer4.0.conv2",
+          "custom_entropy"
+        ],
+        [
+          "layer4.1.conv1",
+          "custom_entropy"
+        ],
+        [
+          "layer4.1.conv2",
+          "l1_norm"
+        ]
+      ]
+    },
+    {
+      "stack_id": "6068",
+      "source_report_stack_id": "6068",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_resnet18_local_r0.55_v0.05_s0.5_j0.5",
+      "source_run_id": "lfpc_CIFAR-10_ResNet18_flops_accuracy_20260513_082244",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "resnet18",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "local",
+      "ratio": 0.55,
+      "context_rank": 3,
+      "reported_accuracy_delta_pp": -13.480000000000004,
+      "reported_flops_reduction_pct": 79.44275849384698,
+      "reported_time_sec": 59.33291353699951,
+      "policy": [
+        [
+          "conv1",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer1.0.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer1.0.conv2",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer1.1.conv1",
+          "mean_abs_act"
+        ],
+        [
+          "layer1.1.conv2",
+          "apoz"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_class_entropy"
+        ],
+        [
+          "layer2.0.conv1",
+          "custom_l2"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_l2"
+        ],
+        [
+          "layer2.1.conv1",
+          "custom_l2"
+        ],
+        [
+          "layer2.1.conv2",
+          "apoz"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "custom_entropy"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_l2"
+        ],
+        [
+          "layer3.0.conv2",
+          "custom_l2"
+        ],
+        [
+          "layer3.1.conv1",
+          "apoz"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "custom_l2"
+        ],
+        [
+          "layer4.0.conv1",
+          "mean_abs_act"
+        ],
+        [
+          "layer4.0.conv2",
+          "custom_l2"
+        ],
+        [
+          "layer4.1.conv1",
+          "apoz"
+        ],
+        [
+          "layer4.1.conv2",
+          "mean_abs_act"
+        ]
+      ]
+    },
+    {
+      "stack_id": "5122",
+      "source_report_stack_id": "5122",
+      "source_stack_key": "LFPC_time_accuracy_cifar10_vgg16_local_r0.3_v0.2_s0.5_j0.7",
+      "source_run_id": "lfpc_cifar10_vgg16_time_accuracy_20260520_221426",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "local",
+      "ratio": 0.3,
+      "context_rank": 4,
+      "reported_accuracy_delta_pp": 7.759999999999991,
+      "reported_flops_reduction_pct": 50.806867178677045,
+      "reported_time_sec": 44.026609572000325,
+      "policy": [
+        [
+          "features.0",
+          "custom_entropy"
+        ],
+        [
+          "features.2",
+          "custom_l2"
+        ],
+        [
+          "features.5",
+          "l1_norm"
+        ],
+        [
+          "features.7",
+          "custom_l2"
+        ],
+        [
+          "features.10",
+          "custom_entropy"
+        ],
+        [
+          "features.12",
+          "custom_l2"
+        ],
+        [
+          "features.14",
+          "apoz"
+        ],
+        [
+          "features.17",
+          "apoz"
+        ],
+        [
+          "features.19",
+          "custom_entropy"
+        ],
+        [
+          "features.21",
+          "apoz"
+        ],
+        [
+          "features.24",
+          "apoz"
+        ],
+        [
+          "features.26",
+          "apoz"
+        ],
+        [
+          "features.28",
+          "apoz"
+        ],
+        [
+          "classifier.0",
+          "custom_hrank"
+        ],
+        [
+          "classifier.3",
+          "apoz"
+        ]
+      ]
+    },
+    {
+      "stack_id": "8196",
+      "source_report_stack_id": "8196",
+      "source_stack_key": "LFPC_flops_accuracy_cifar10_vgg16_local_r0.3_v0.05_s0.5_j0.5",
+      "source_run_id": "lfpc_cifar10_vgg16_flops_accuracy_20260521_082543",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "flops_accuracy",
+      "objective_label": "FLOPs + Accuracy",
+      "scope": "local",
+      "ratio": 0.3,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": 7.75,
+      "reported_flops_reduction_pct": 50.806867178677045,
+      "reported_time_sec": 49.88218974899959,
+      "policy": [
+        [
+          "features.0",
+          "apoz"
+        ],
+        [
+          "features.2",
+          "custom_l2"
+        ],
+        [
+          "features.5",
+          "l1_norm"
+        ],
+        [
+          "features.7",
+          "apoz"
+        ],
+        [
+          "features.10",
+          "custom_entropy"
+        ],
+        [
+          "features.12",
+          "custom_l2"
+        ],
+        [
+          "features.14",
+          "apoz"
+        ],
+        [
+          "features.17",
+          "custom_entropy"
+        ],
+        [
+          "features.19",
+          "apoz"
+        ],
+        [
+          "features.21",
+          "custom_l2"
+        ],
+        [
+          "features.24",
+          "apoz"
+        ],
+        [
+          "features.26",
+          "apoz"
+        ],
+        [
+          "features.28",
+          "custom_entropy"
+        ],
+        [
+          "classifier.0",
+          "custom_hrank"
+        ],
+        [
+          "classifier.3",
+          "apoz"
+        ]
+      ]
+    },
+    {
+      "stack_id": "4330",
+      "source_report_stack_id": "4330",
+      "source_stack_key": "LFPC_time_accuracy_cifar10_vgg16_global_r0.55_v0.05_s0.7_j0.5",
+      "source_run_id": "lfpc_cifar10_vgg16_time_accuracy_20260520_221426",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "global",
+      "ratio": 0.55,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": 5.030000000000001,
+      "reported_flops_reduction_pct": 54.34163430051995,
+      "reported_time_sec": 48.90180844199904,
+      "policy": [
+        [
+          "features.0",
+          "custom_tis"
+        ],
+        [
+          "features.2",
+          "custom_nisp"
+        ],
+        [
+          "features.5",
+          "custom_nisp"
+        ],
+        [
+          "features.7",
+          "custom_autodfp"
+        ],
+        [
+          "features.10",
+          "custom_reprune"
+        ],
+        [
+          "features.12",
+          "custom_autodfp"
+        ],
+        [
+          "features.14",
+          "custom_nisp"
+        ],
+        [
+          "features.17",
+          "custom_gfs"
+        ],
+        [
+          "features.19",
+          "custom_tis"
+        ],
+        [
+          "features.21",
+          "custom_tis"
+        ],
+        [
+          "features.24",
+          "custom_tis"
+        ],
+        [
+          "features.26",
+          "custom_dcp"
+        ],
+        [
+          "features.28",
+          "custom_gfs"
+        ]
+      ]
+    },
+    {
+      "stack_id": "8862",
+      "source_report_stack_id": "8862",
+      "source_stack_key": "LFPC_time_accuracy_cifar10_vgg16_global_r0.45_v0.1_s0.5_j0.5",
+      "source_run_id": "lfpc_cifar10_vgg16_time_accuracy_20260520_221426",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "global",
+      "ratio": 0.45,
+      "context_rank": 2,
+      "reported_accuracy_delta_pp": 9.22999999999999,
+      "reported_flops_reduction_pct": 38.10549973235327,
+      "reported_time_sec": 45.08285716099772,
+      "policy": [
+        [
+          "features.0",
+          "custom_tis"
+        ],
+        [
+          "features.2",
+          "custom_autodfp"
+        ],
+        [
+          "features.5",
+          "custom_autodfp"
+        ],
+        [
+          "features.7",
+          "custom_nisp"
+        ],
+        [
+          "features.10",
+          "custom_nisp"
+        ],
+        [
+          "features.12",
+          "custom_autodfp"
+        ],
+        [
+          "features.14",
+          "custom_nisp"
+        ],
+        [
+          "features.17",
+          "custom_reprune"
+        ],
+        [
+          "features.19",
+          "custom_reprune"
+        ],
+        [
+          "features.21",
+          "custom_dcp"
+        ],
+        [
+          "features.24",
+          "custom_tis"
+        ],
+        [
+          "features.26",
+          "custom_tis"
+        ],
+        [
+          "features.28",
+          "custom_tis"
+        ]
+      ]
+    },
+    {
+      "stack_id": "6755",
+      "source_report_stack_id": "6755",
+      "source_stack_key": "LFPC_time_accuracy_cifar10_resnet18_global_r0.45_v0.05_s0.5_j0.7",
+      "source_run_id": "lfpc_cifar10_resnet18_time_accuracy_20260521_111010",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "resnet18",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "global",
+      "ratio": 0.45,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": 4.699999999999989,
+      "reported_flops_reduction_pct": 62.37293476488973,
+      "reported_time_sec": 81.60230955400402,
+      "policy": [
+        [
+          "conv1",
+          "custom_tis"
+        ],
+        [
+          "layer1.0.conv1",
+          "custom_reprune"
+        ],
+        [
+          "layer1.0.conv2",
+          "custom_dcp"
+        ],
+        [
+          "layer1.1.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer1.1.conv2",
+          "custom_autodfp"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_thinet"
+        ],
+        [
+          "layer2.0.conv1",
+          "custom_thinet"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer2.1.conv1",
+          "custom_dcp"
+        ],
+        [
+          "layer2.1.conv2",
+          "custom_tis"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "custom_reprune"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_tis"
+        ],
+        [
+          "layer3.0.conv2",
+          "custom_gfs"
+        ],
+        [
+          "layer3.1.conv1",
+          "custom_reprune"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_reprune"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "custom_tis"
+        ],
+        [
+          "layer4.0.conv1",
+          "custom_dcp"
+        ],
+        [
+          "layer4.0.conv2",
+          "custom_dcp"
+        ],
+        [
+          "layer4.1.conv1",
+          "custom_reprune"
+        ],
+        [
+          "layer4.1.conv2",
+          "custom_tis"
+        ]
+      ]
+    },
+    {
+      "stack_id": "6619",
+      "source_report_stack_id": "6619",
+      "source_stack_key": "LFPC_time_accuracy_cifar10_vgg16_local_r0.3_v0.05_s0.5_j0.7",
+      "source_run_id": "lfpc_cifar10_vgg16_time_accuracy_20260520_221426",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "vgg16",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "local",
+      "ratio": 0.3,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": 7.8799999999999955,
+      "reported_flops_reduction_pct": 50.806867178677045,
+      "reported_time_sec": 43.75412490649978,
+      "policy": [
+        [
+          "features.0",
+          "custom_entropy"
+        ],
+        [
+          "features.2",
+          "custom_l2"
+        ],
+        [
+          "features.5",
+          "custom_l2"
+        ],
+        [
+          "features.7",
+          "apoz"
+        ],
+        [
+          "features.10",
+          "apoz"
+        ],
+        [
+          "features.12",
+          "apoz"
+        ],
+        [
+          "features.14",
+          "apoz"
+        ],
+        [
+          "features.17",
+          "apoz"
+        ],
+        [
+          "features.19",
+          "apoz"
+        ],
+        [
+          "features.21",
+          "apoz"
+        ],
+        [
+          "features.24",
+          "apoz"
+        ],
+        [
+          "features.26",
+          "custom_entropy"
+        ],
+        [
+          "features.28",
+          "apoz"
+        ],
+        [
+          "classifier.0",
+          "custom_hrank"
+        ],
+        [
+          "classifier.3",
+          "apoz"
+        ]
+      ]
+    },
+    {
+      "stack_id": "5063",
+      "source_report_stack_id": "5063",
+      "source_stack_key": "LFPC_time_accuracy_cifar10_resnet18_local_r0.55_v0.05_s0.5_j0.5",
+      "source_run_id": "lfpc_CIFAR-10_ResNet18_time_accuracy_20260513_084515",
+      "dataset": "cifar10",
+      "dataset_label": "CIFAR-10",
+      "model": "resnet18",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "local",
+      "ratio": 0.55,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": -9.070000000000007,
+      "reported_flops_reduction_pct": 79.44275849384698,
+      "reported_time_sec": 58.61670397700118,
+      "policy": [
+        [
+          "conv1",
+          "l1_norm"
+        ],
+        [
+          "layer1.0.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer1.0.conv2",
+          "custom_class_entropy"
+        ],
+        [
+          "layer1.1.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer1.1.conv2",
+          "l1_norm"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_l2"
+        ],
+        [
+          "layer2.0.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_l2"
+        ],
+        [
+          "layer2.1.conv1",
+          "custom_l2"
+        ],
+        [
+          "layer2.1.conv2",
+          "custom_l2"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "apoz"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_class_entropy"
+        ],
+        [
+          "layer3.0.conv2",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer3.1.conv1",
+          "custom_l2"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_entropy"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "apoz"
+        ],
+        [
+          "layer4.0.conv1",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer4.0.conv2",
+          "custom_entropy"
+        ],
+        [
+          "layer4.1.conv1",
+          "custom_class_entropy"
+        ],
+        [
+          "layer4.1.conv2",
+          "apoz"
+        ]
+      ]
+    },
+    {
+      "stack_id": "1473",
+      "source_report_stack_id": "1473",
+      "source_stack_key": "LFPC_flops_accuracy_cats_dogs_resnet18_local_r0.3_v0.05_s0.7_j0.7",
+      "source_run_id": "lfpc_cats_dogs_resnet18_flops_accuracy_20260520_210706",
+      "dataset": "cats_dogs",
+      "dataset_label": "Cats-vs-Dogs",
+      "model": "resnet18",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "local",
+      "ratio": 0.3,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": -3.466796875,
+      "reported_flops_reduction_pct": 49.44179339297602,
+      "reported_time_sec": 173.62172054500047,
+      "policy": [
+        [
+          "conv1",
+          "l1_norm"
+        ],
+        [
+          "layer1.0.conv1",
+          "custom_hrank"
+        ],
+        [
+          "layer1.0.conv2",
+          "mean_abs_act"
+        ],
+        [
+          "layer1.1.conv1",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer1.1.conv2",
+          "custom_l2"
+        ],
+        [
+          "layer2.0.downsample.0",
+          "custom_l2"
+        ],
+        [
+          "layer2.0.conv1",
+          "custom_l2"
+        ],
+        [
+          "layer2.0.conv2",
+          "custom_entropy"
+        ],
+        [
+          "layer2.1.conv1",
+          "custom_gfi_ap"
+        ],
+        [
+          "layer2.1.conv2",
+          "custom_hrank"
+        ],
+        [
+          "layer3.0.downsample.0",
+          "custom_class_entropy"
+        ],
+        [
+          "layer3.0.conv1",
+          "custom_hrank"
+        ],
+        [
+          "layer3.0.conv2",
+          "custom_hrank"
+        ],
+        [
+          "layer3.1.conv1",
+          "mean_abs_act"
+        ],
+        [
+          "layer3.1.conv2",
+          "custom_spectral_energy"
+        ],
+        [
+          "layer4.0.downsample.0",
+          "custom_spectral_energy"
+        ],
+        [
+          "layer4.0.conv1",
+          "l1_norm"
+        ],
+        [
+          "layer4.0.conv2",
+          "custom_hrank"
+        ],
+        [
+          "layer4.1.conv1",
+          "mean_abs_act"
+        ],
+        [
+          "layer4.1.conv2",
+          "custom_gfi_ap"
+        ]
+      ]
+    },
+    {
+      "stack_id": "7774",
+      "source_report_stack_id": "7774",
+      "source_stack_key": "LFPC_flops_accuracy_cats_dogs_vgg16_local_r0.3_v0.05_s0.7_j0.7",
+      "source_run_id": "lfpc_cats_dogs_vgg16_flops_accuracy_20260520_192141",
+      "dataset": "cats_dogs",
+      "dataset_label": "Cats-vs-Dogs",
+      "model": "vgg16",
+      "objective": "time_accuracy",
+      "objective_label": "Time + Accuracy",
+      "scope": "local",
+      "ratio": 0.3,
+      "context_rank": 1,
+      "reported_accuracy_delta_pp": -9.521484375,
+      "reported_flops_reduction_pct": 50.8074152689671,
+      "reported_time_sec": 72.13883751400135,
+      "policy": [
+        [
+          "features.0",
+          "custom_entropy"
+        ],
+        [
+          "features.2",
+          "apoz"
+        ],
+        [
+          "features.5",
+          "custom_l2"
+        ],
+        [
+          "features.7",
+          "custom_l2"
+        ],
+        [
+          "features.10",
+          "l1_norm"
+        ],
+        [
+          "features.12",
+          "custom_l2"
+        ],
+        [
+          "features.14",
+          "apoz"
+        ],
+        [
+          "features.17",
+          "custom_class_entropy"
+        ],
+        [
+          "features.19",
+          "custom_l2"
+        ],
+        [
+          "features.21",
+          "custom_l2"
+        ],
+        [
+          "features.24",
+          "custom_l2"
+        ],
+        [
+          "features.26",
+          "custom_entropy"
+        ],
+        [
+          "features.28",
+          "custom_entropy"
+        ],
+        [
+          "classifier.0",
+          "custom_hrank"
+        ],
+        [
+          "classifier.3",
+          "custom_entropy"
+        ]
+      ]
+    }
+  ]
+}
