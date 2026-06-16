@@ -5,7 +5,7 @@ authors:
   given-names: "Albert"
 title: "ReduCNN: Dual-framework Activation-based Structural Pruning"
 version: 0.88.0
-doi: 10.5281/zenodo.FIXME  # Replace with actual DOI after Zenodo release
+doi: 10.5281/zenodo.20720621  # Replace with actual DOI after Zenodo release
 date-released: 2026-06-16
 url: "https://github.com/albertraviss2023/activation-based-pruning"
 repository-code: "https://github.com/albertraviss2023/activation-based-pruning"

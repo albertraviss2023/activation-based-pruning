@@ -1,6 +1,6 @@
 # ReduCNN
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.FIXME.svg)](https://doi.org/10.5281/zenodo.FIXME)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20720621.svg)](https://doi.org/10.5281/zenodo.20720621)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ReduCNN is a dual-framework research package for activation-based structural
@@ -17,7 +17,7 @@ To reproduce the experiments presented in the associated thesis:
 3. **Notebooks**: The root directory contains various `.ipynb` files used for specific experiments (e.g., `experiments_cifar10.ipynb`, `experiments_cat_dog.ipynb`).
 4. **Data**: Datasets will be downloaded automatically to the `data/` folder upon first run.
 
-For the exact version used in the final reporting, refer to the [Zenodo DOI release](https://doi.org/10.5281/zenodo.FIXME).
+For the exact version used in the final reporting, refer to the [Zenodo DOI release](https://doi.org/10.5281/zenodo.20720621).
 
 The core idea is simple:
 
@@ -250,7 +250,7 @@ If you use ReduCNN in your research, please cite it using the following metadata
   author = {Albert, Lutakome},
   title = {{ReduCNN: Dual-framework Activation-based Structural Pruning}},
   version = {0.88.0},
-  doi = {10.5281/zenodo.FIXME},
+  doi = {10.5281/zenodo.20720621},
   url = {https://github.com/albertraviss2023/activation-based-pruning},
   month = {6},
   year = {2026}
