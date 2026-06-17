@@ -22,7 +22,7 @@ The notebooks answer three linked questions:
 The experiment notebooks follow this pattern:
 
 ```text
-experiments_lfpc_realistic_thresholds_enhanced_visuals_<dataset>_<model>_registered_methods_<objective>.ipynb
+experiments_for_pruning_policy_search_on_context_<dataset>_<model>_registered_methods_<objective>.ipynb
 ```
 
 Common axes:

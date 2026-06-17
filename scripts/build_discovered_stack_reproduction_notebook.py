@@ -12,7 +12,7 @@ import nbformat as nbf
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "reproduce_discovered_cifar10_global_flops_accuracy_stacks.ipynb"
 REFERENCE = ROOT / (
-    "experiments_lfpc_realistic_thresholds_enhanced_visuals_resnet18_cifar10_"
+    "experiments_for_pruning_policy_search_on_context_resnet18_cifar10_"
     "registered_methods_objective_flops_accuracy.ipynb"
 )
 

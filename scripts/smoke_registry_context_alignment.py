@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--notebook",
         type=Path,
-        default=Path("experiments_lfpc_realistic_thresholds_enhanced_visuals_vgg16_cifar10_registered_methods_objective_time_accuracy.ipynb"),
+        default=Path("experiments_for_pruning_policy_search_on_context_vgg16_cifar10_registered_methods_objective_time_accuracy.ipynb"),
     )
     return parser.parse_args()
 

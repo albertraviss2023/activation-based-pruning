@@ -4,7 +4,7 @@ from pathlib import Path
 
 def test_resnet_catdog_flops_accuracy_notebook_rejects_empty_flops_exports():
     notebook = Path(
-        "experiments_lfpc_realistic_thresholds_enhanced_visuals_cats_dogs_catdog_baseline_resnet18_registered_methods_objective_flops_accuracy.ipynb"
+        "experiments_for_pruning_policy_search_on_context_cats_dogs_catdog_baseline_resnet18_registered_methods_objective_flops_accuracy.ipynb"
     )
     assert notebook.exists()
     data = json.loads(notebook.read_text(encoding="utf-8"))

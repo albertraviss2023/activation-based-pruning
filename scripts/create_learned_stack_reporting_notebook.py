@@ -183,7 +183,7 @@ def notebook_text(path: Path) -> str:
 
 notebook_rows = []
 registration_rows = []
-for nb in sorted(ROOT.glob("experiments_lfpc_realistic_thresholds_enhanced_visuals_*registered_methods*.ipynb")):
+for nb in sorted(ROOT.glob("experiments_for_pruning_policy_search_on_context_*registered_methods*.ipynb")):
     src = notebook_text(nb)
     registered = sorted(set(re.findall(r'@register_method\("([^"\n]+)"', src)))
     notebook_rows.append({

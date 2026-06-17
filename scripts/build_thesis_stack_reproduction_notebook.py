@@ -537,7 +537,21 @@ def _as_filter_set(value, normalizer=str):
     if value is None or value == "" or value == "all" or value == ["all"]:
         return None
     if isinstance(value, str):
-        parts = [x.strip() for x in re.split(r"[,| ]+", value) if x.strip()]
+        text = value.strip()
+        if text.lower() == "all":
+            return None
+        if text.startswith(("[", "(", "{")):
+            try:
+                import ast
+                parsed = ast.literal_eval(text)
+                if isinstance(parsed, (list, tuple, set)):
+                    parts = list(parsed)
+                else:
+                    parts = [parsed]
+            except Exception:
+                parts = [x.strip().strip("'\"[](){}") for x in re.split(r"[,| ]+", text) if x.strip()]
+        else:
+            parts = [x.strip().strip("'\"[](){}") for x in re.split(r"[,| ]+", text) if x.strip()]
     else:
         parts = list(value)
     out = {normalizer(x) for x in parts}
