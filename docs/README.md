@@ -16,6 +16,7 @@ project state notes. Start with the current guides below.
 - [Running ReduCNN Studio on Google Colab](COLAB_UI.md): Colab tunnel setup.
 - [Repo Hygiene](REPO_HYGIENE.md): what should and should not be committed.
 - [Zenodo DOI Guide](ZENODO_GUIDE.md): how to finalize the academic release.
+- [Experiment Guide](EXPERIMENTS_GUIDE.md): overview of all research notebooks and how to run them.
 
 ## Audits And Reports
 

@@ -7,17 +7,27 @@ ReduCNN is a dual-framework research package for activation-based structural
 pruning of convolutional neural networks. It supports PyTorch and Keras models,
 lets researchers register their own pruning mathematics, and performs physical
 channel/filter removal so the pruned model is actually smaller.
-
 ## Reproducibility
 
 To reproduce the experiments presented in the associated thesis:
 
-1. **Environment**: Install the package and dependencies using `pip install -r requirements.txt`.
-2. **Workflows**: Follow the detailed guides in [docs/WORKFLOWS_HOWTO.md](docs/WORKFLOWS_HOWTO.md).
-3. **Notebooks**: The root directory contains various `.ipynb` files used for specific experiments (e.g., `experiments_cifar10.ipynb`, `experiments_cat_dog.ipynb`).
-4. **Data**: Datasets will be downloaded automatically to the `data/` folder upon first run.
+1. **Environment**: Install the package using `pip install -r requirements.txt`.
+2. **Experiment Guide**: Refer to [docs/EXPERIMENTS_GUIDE.md](docs/EXPERIMENTS_GUIDE.md) for a catalog of available notebooks.
+3. **Workflows**: Follow the detailed setup guides in [docs/WORKFLOWS_HOWTO.md](docs/WORKFLOWS_HOWTO.md).
 
 For the exact version used in the final reporting, refer to the [Zenodo DOI release](https://doi.org/10.5281/zenodo.20720621).
+
+## Experiments
+
+ReduCNN includes a suite of notebooks for automated pruning research:
+
+- **Pruning Policy Search**: Discover optimal layer-wise hybrid stacks (search for `experiments_for_pruning_policy_search_on_context_`).
+- **Standard Benchmarks**: CIFAR-10 and Cats-vs-Dogs experiment suites.
+- **Visualization**: Deep-dive diagnostics and architecture animations.
+
+See the [Experiment Guide](docs/EXPERIMENTS_GUIDE.md) for running instructions on VS Code and Google Colab.
+
+## Install
 
 The core idea is simple:
 
@@ -240,6 +250,11 @@ tests/             regression and workflow tests
 - [Module Documentation](MODULE_DOCUMENTATION.md)
 - [Implementation Audit](docs/IMPLEMENTATION_AUDIT_v0.6.6.md)
 - [Literature Fidelity Report](docs/LITERATURE_FIDELITY_REPORT_v2.md)
+
+## Contact
+
+For issues, questions, or collaboration, please contact:
+**Albert Lutakome** - [albertraviss@gmail.com](mailto:albertraviss@gmail.com)
 
 ## Citation
 
