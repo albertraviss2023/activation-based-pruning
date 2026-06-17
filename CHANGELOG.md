@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.88.1] - 2026-06-16
+
+### Added
+- Academic reproducibility metadata: `CITATION.cff`, `LICENSE`, `requirements.txt`.
+- Zenodo DOI integration and guided documentation.
+- Experiment Guide for researchers (VS Code + Colab).
+- Contact information and updated README for academic release.
+
+### Changed
+- Renamed experiment notebooks to a descriptive pruning policy search prefix.
+- Updated internal package versioning to match GitHub release.
+
 ## [0.88.0] - 2026-03-25
 
 ### Added

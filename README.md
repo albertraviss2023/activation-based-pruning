@@ -264,7 +264,7 @@ If you use ReduCNN in your research, please cite it using the following metadata
 @software{ReduCNN,
   author = {Albert, Lutakome},
   title = {{ReduCNN: Dual-framework Activation-based Structural Pruning}},
-  version = {0.88.0},
+  version = {0.88.1},
   doi = {10.5281/zenodo.20720621},
   url = {https://github.com/albertraviss2023/activation-based-pruning},
   month = {6},

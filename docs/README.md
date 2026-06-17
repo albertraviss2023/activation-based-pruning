@@ -23,6 +23,7 @@ project state notes. Start with the current guides below.
 - [Implementation Audit](IMPLEMENTATION_AUDIT_v0.6.6.md)
 - [Literature Fidelity Report](LITERATURE_FIDELITY_REPORT_v2.md)
 - [Hybrid Stack Variability Report](HYBRID_STACK_VARIABILITY_REPORT.md)
+- [Release Notes v0.88.1](RELEASE_NOTES_v0.88.1.md)
 - [Release Notes v0.88.0](RELEASE_NOTES_v0.88.0.md)
 
 ## Historical State Notes

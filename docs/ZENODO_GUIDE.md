@@ -15,7 +15,7 @@ To complete the academic release and obtain a DOI for your thesis, follow these 
 ## 3. Create a Release
 1. Go to your GitHub repository.
 2. Click on **Releases** -> **Create a new release**.
-3. Tag the version (e.g., `v0.88.0`).
+3. Tag the version (e.g., `v0.88.1`).
 4. Give it a title and description.
 5. Click **Publish release**.
 

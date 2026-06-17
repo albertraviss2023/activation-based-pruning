@@ -4,7 +4,7 @@ authors:
 - family-names: "Lutakome"
   given-names: "Albert"
 title: "ReduCNN: Dual-framework Activation-based Structural Pruning"
-version: 0.88.0
+version: 0.88.1
 doi: 10.5281/zenodo.20720621  
 date-released: 2026-06-16
 url: "https://github.com/albertraviss2023/activation-based-pruning"
