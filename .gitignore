@@ -86,6 +86,10 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
+# Project specific ignores
+configs/
+scripts/
+
 # Temporary drive folders
 .tmp.driveupload/
 .tmp.drivedownload/
